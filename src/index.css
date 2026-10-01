@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm material palette: cream plaster, clay, woven gold, a little greenery */
+    --background: 38 42% 95%;          /* cream plaster #F7F2E8 */
+    --foreground: 24 32% 19%;          /* deep espresso brown */
+    --card: 40 50% 99%;                /* near-white cream, catches warm light */
+    --card-foreground: 24 32% 19%;
+    --popover: 40 50% 99%;
+    --popover-foreground: 24 32% 19%;
+    --primary: 25 28% 44%;             /* clay #A37B5C */
+    --primary-foreground: 40 50% 98%;
+    --secondary: 36 32% 90%;           /* warm sand */
+    --secondary-foreground: 24 32% 22%;
+    --muted: 36 28% 91%;
+    --muted-foreground: 24 12% 44%;    /* softened so body text stays quiet */
+    --accent: 34 45% 57%;              /* woven gold #C99A5C */
+    --accent-foreground: 24 32% 19%;
+    --destructive: 6 54% 39%;          /* berbere red #8C2F26 */
+    --destructive-foreground: 40 50% 98%;
+    --border: 32 24% 85%;              /* soft warm hairline */
+    --input: 32 24% 85%;
+    --ring: 25 28% 44%;
+    --chart-1: 25 28% 44%;             /* clay */
+    --chart-2: 102 16% 36%;            /* sage green */
+    --chart-3: 34 45% 57%;             /* gold */
+    --chart-4: 24 37% 32%;             /* wood */
+    --chart-5: 6 54% 39%;              /* berbere red */
+    --radius: 1rem;
+    --font-heading: 'Fraunces', ui-serif, Georgia, serif;
+    --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Fraunces', ui-serif, Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    /* Deep warm charcoal-brown sidebar — a shaded interior against the cream */
+    --sidebar-background: 25 26% 12%;   /* walnut */
+    --sidebar-foreground: 36 26% 76%;
+    --sidebar-primary: 34 45% 60%;     /* gold */
+    --sidebar-primary-foreground: 25 26% 12%;
+    --sidebar-accent: 25 20% 18%;
+    --sidebar-accent-foreground: 38 34% 90%;
+    --sidebar-border: 25 16% 21%;
+    --sidebar-ring: 34 45% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    /* Warm lamplight from the upper right, a cool-green whisper lower left so
+       the page feels lit rather than flatly filled. Fixed so the light stays
+       put while content scrolls. */
+    background-image:
+      radial-gradient(1100px 620px at 88% -12%, hsl(34 48% 62% / 0.20), transparent 62%),
+      radial-gradient(760px 520px at 8% 106%, hsl(102 18% 46% / 0.09), transparent 58%),
+      radial-gradient(1000px 700px at 50% 40%, hsl(38 44% 97% / 0.55), transparent 70%);
+    background-attachment: fixed;
+  }
+
+  /* Tabular figures keep numbers from shifting width in stat tiles and bills. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* The base surface for every panel. Generous radius, hairline warm border,
+     lit top edge, and a two-layer shadow that reads as ambient + key light. */
+  .card-soft {
+    @apply rounded-2xl border border-border/70 bg-card shadow-warm;
+  }
+
+  /* Section header treatment: a small gold rule that quietly marks hierarchy. */
+  .rule-gold {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-gold/40 to-transparent;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+  }
+  /* Active item is marked by a gold edge bar plus a faint gold wash. */
+  .sidebar-link-active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_2px_0_0_0_hsl(34_45%_60%)];
+  }
+
+  /* Status pill: tinted fill instead of a hard border. */
+  .status-dot {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45)];
+  }
+
+  .input-soft {
+    @apply h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .btn-soft {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn-soft bg-primary text-primary-foreground hover:brightness-105 shadow-[0_4px_14px_-6px_hsl(27_34%_46%_/_0.6)];
+  }
+  .btn-ghost {
+    @apply btn-soft text-foreground hover:bg-secondary;
+  }
+  .btn-outline {
+    @apply btn-soft border border-input bg-card hover:bg-secondary;
+  }
+  .btn-destructive {
+    @apply btn-soft bg-destructive text-destructive-foreground hover:brightness-105;
+  }
+
+  /* Archway motif — semi-circular top, the signature shape from the reference */
+  .arch-top {
+    border-top-left-radius: 9999px;
+    border-top-right-radius: 9999px;
+  }
+  .arch-frame {
+    @apply arch-top overflow-hidden bg-card border border-border shadow-glow;
+  }
+
+  /* Warm woven-gold gradient text for display headings */
+  .text-gold-gradient {
+    background: linear-gradient(180deg, hsl(36 52% 62%), hsl(25 34% 46%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Diffuse golden bloom, for hero panels and ambient corners. */
+  .bloom-gold {
+    background-image: radial-gradient(closest-side, hsl(34 48% 62% / 0.28), transparent);
+  }
+
+  /* Diffuse sage wash, used as the one natural-green note per screen. */
+  .bloom-sage {
+    background-image: radial-gradient(closest-side, hsl(102 18% 46% / 0.18), transparent);
+  }
+}
+
+/* subtle warm scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: hsl(36 30% 92%); }
+::-webkit-scrollbar-thumb { background: hsl(32 22% 80%); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: hsl(25 28% 62%); background-clip: content-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
