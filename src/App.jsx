@@ -1,10 +1,10 @@
 import { Toaster } from "@/components/ui/toaster"
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import ScrollToTop from './components/ScrollToTop';
 import { RoleProvider, useRole } from '@/lib/RoleContext';
+import { homeFor } from '@/lib/roles';
+import { DataProvider } from '@/lib/DataContext';
 import Layout from '@/components/Layout';
 import RoleSelect from '@/pages/RoleSelect';
 
@@ -45,53 +45,106 @@ const Shell = () => {
   return (
     <Layout>
       <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/tables" element={<Tables />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/orders/:id" element={<OrderDetail />} />
-        <Route path="/orders/new" element={<NewOrder />} />
-        <Route path="/kitchen" element={<KitchenQueue />} />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/menu-availability" element={<MenuAvailability />} />
-        <Route path="/recipes" element={<Recipes />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/reservations" element={<Reservations />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/suppliers" element={<Suppliers />} />
-        <Route path="/purchases" element={<Purchases />} />
-        <Route path="/expenses" element={<Expenses />} />
-        <Route path="/cleaning" element={<Cleaning />} />
-        <Route path="/my-tasks" element={<MyTasks />} />
-        <Route path="/table-queue" element={<TableQueue />} />
-        <Route path="/maintenance" element={<Maintenance />} />
-        <Route path="/visitors" element={<Visitors />} />
-        <Route path="/incidents" element={<Incidents />} />
-        <Route path="/lost-found" element={<LostFound />} />
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/activity-log" element={<ActivityLog />} />
-        <Route path="/settings" element={<Settings />} />
+        {/* Shared across every role: no data of its own, just chrome. */}
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Operations */}
+        <Guarded roles={["manager", "admin", "waiter"]}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tables" element={<Tables />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/:id" element={<OrderDetail />} />
+          <Route path="/orders/new" element={<NewOrder />} />
+          <Route path="/reservations" element={<Reservations />} />
+          <Route path="/customers" element={<Customers />} />
+        </Guarded>
+
+        {/* Kitchen */}
+        <Guarded roles={["manager", "admin", "kitchen", "waiter"]}>
+          <Route path="/kitchen" element={<KitchenQueue />} />
+          <Route path="/menu-availability" element={<MenuAvailability />} />
+          <Route path="/recipes" element={<Recipes />} />
+        </Guarded>
+
+        {/* Menu authoring is manager/admin only; kitchen only toggles availability. */}
+        <Guarded roles={["manager", "admin"]}>
+          <Route path="/menu" element={<Menu />} />
+        </Guarded>
+
+        {/* Stock and purchasing. Kitchen sees inventory read-only, matching its nav. */}
+        <Guarded roles={["manager", "admin", "inventory", "kitchen"]}>
+          <Route path="/inventory" element={<Inventory />} />
+        </Guarded>
+        <Guarded roles={["manager", "admin", "inventory"]}>
+          <Route path="/suppliers" element={<Suppliers />} />
+          <Route path="/purchases" element={<Purchases />} />
+        </Guarded>
+
+        {/* Finance — visible to all three, but the page itself scopes by role. */}
+        <Guarded roles={["manager", "admin", "inventory"]}>
+          <Route path="/expenses" element={<Expenses />} />
+        </Guarded>
+
+        {/* Cleaning */}
+        <Guarded roles={["manager", "admin", "cleaner"]}>
+          <Route path="/cleaning" element={<Cleaning />} />
+          <Route path="/my-tasks" element={<MyTasks />} />
+          <Route path="/table-queue" element={<TableQueue />} />
+        </Guarded>
+
+        {/* Security */}
+        <Guarded roles={["manager", "admin", "security"]}>
+          <Route path="/visitors" element={<Visitors />} />
+          <Route path="/incidents" element={<Incidents />} />
+          <Route path="/lost-found" element={<LostFound />} />
+        </Guarded>
+
+        {/* Maintenance is raised by anyone on the floor, resolved by a manager. */}
+        <Guarded roles={["manager", "admin", "kitchen", "waiter", "inventory", "cleaner", "security"]}>
+          <Route path="/maintenance" element={<Maintenance />} />
+        </Guarded>
+
+        {/* Administration and reporting */}
+        <Guarded roles={["manager", "admin"]}>
+          <Route path="/employees" element={<Employees />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/activity-log" element={<ActivityLog />} />
+          <Route path="/settings" element={<Settings />} />
+        </Guarded>
+
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </Layout>
   );
 };
 
+/* Nav is filtered per role, but a hand-typed URL was not. This turns any route
+   the active role cannot reach into a redirect home rather than a data leak. */
+function Guarded({ roles, children }) {
+  const { role } = useRole();
+  if (!roles.includes(role)) return <Navigate to={homeFor(role)} replace />;
+  return children;
+}
+
+function HomeRedirect() {
+  const { role } = useRole();
+  return <Navigate to={homeFor(role)} replace />;
+}
+
 function App() {
   return (
-    <QueryClientProvider client={queryClientInstance}>
-      <Router>
-        <ScrollToTop />
-        <RoleProvider>
+    <Router>
+      <ScrollToTop />
+      <RoleProvider>
+        <DataProvider>
           <Shell />
-        </RoleProvider>
-      </Router>
+        </DataProvider>
+      </RoleProvider>
       <Toaster />
-    </QueryClientProvider>
+    </Router>
   )
 }
 

@@ -1,15 +1,35 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { PageHeader, SearchInput } from "@/components/ui/shared";
-import { menuItems, etb } from "@/lib/mockData";
+import { etb } from "@/lib/format";
+import { useData } from "@/lib/DataContext";
+import { useRole } from "@/lib/RoleContext";
+import { stamp } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 export default function MenuAvailability() {
+  const { db, updateItem, insertItem } = useData();
+  const { role } = useRole();
   const [q, setQ] = useState("");
-  const [items, setItems] = useState(menuItems.filter((m) => m.status === "Active").map((m) => ({ ...m })));
 
-  const toggle = (id) => setItems((it) => it.map((m) => m.id === id ? { ...m, availability: m.availability === "Available" ? "Unavailable" : "Available" } : m));
+  const toggle = (m) => {
+    const next = m.availability === "Available" ? "Unavailable" : "Available";
+    updateItem("menuItems", m.id, { availability: next });
+    insertItem("activityLog", {
+      id: `L${Date.now()}`,
+      who: role || "kitchen",
+      when: stamp(),
+      action: "Toggled menu item availability",
+      target: m.name,
+      old: m.availability,
+      new: next,
+      reason: "",
+    });
+  };
 
-  const filtered = items.filter((m) => !q || m.name.toLowerCase().includes(q.toLowerCase()));
+  const filtered = useMemo(() => {
+    const needle = q.toLowerCase();
+    return db.menuItems.filter((m) => m.status === "Active" && (!needle || m.name.toLowerCase().includes(needle)));
+  }, [db.menuItems, q]);
 
   return (
     <div>
@@ -28,7 +48,7 @@ export default function MenuAvailability() {
               <p className="truncate font-medium">{m.name}</p>
               <p className="text-xs text-muted-foreground">{etb(m.price)} ETB · {m.fasting}</p>
             </div>
-            <button onClick={() => toggle(m.id)} className={cn("rounded-full px-3 py-1.5 text-xs font-semibold transition-colors", m.availability === "Available" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>
+            <button onClick={() => toggle(m)} aria-pressed={m.availability === "Unavailable"} className={cn("rounded-full px-3 py-1.5 text-xs font-semibold transition-colors", m.availability === "Available" ? "bg-sage-100 text-sage-700" : "bg-berbere-100 text-berbere-600")}>
               {m.availability === "Available" ? "Available" : "Unavailable"}
             </button>
           </div>

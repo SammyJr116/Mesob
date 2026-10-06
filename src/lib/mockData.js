@@ -1,15 +1,6 @@
-// Central mock data for the restaurant management system UI.
-// Reflects the PRD entities, statuses and rules. All in-memory.
-
-export const ROLES = [
-  { id: "manager", name: "Manager", device: "Desktop", home: "/dashboard", color: "amber" },
-  { id: "admin", name: "Administrator", device: "Desktop", home: "/users", color: "slate" },
-  { id: "kitchen", name: "Kitchen", device: "Tablet", home: "/kitchen", color: "rose" },
-  { id: "waiter", name: "Waiter", device: "Tablet", home: "/tables", color: "sky" },
-  { id: "inventory", name: "Inventory Staff", device: "Desktop", home: "/inventory", color: "emerald" },
-  { id: "cleaner", name: "Cleaner", device: "Phone", home: "/my-tasks", color: "violet" },
-  { id: "security", name: "Security", device: "Phone", home: "/visitors", color: "indigo" },
-];
+// Seed data for the restaurant management system UI. Loaded once by
+// `DataContext` into localStorage; pages read the store, never this file.
+// Billing maths lives in `format.js`, role metadata in `roles.js`.
 
 export const restaurant = {
   name: "Mesob House",
@@ -39,15 +30,15 @@ export const restaurant = {
 
 export const tables = [
   { id: "T01", number: "1", seats: 2, section: "Window", status: "Available", order: null, reservation: null },
-  { id: "T02", number: "2", seats: 2, section: "Window", status: "Occupied", order: "ORD-0042", waiter: "Selam", reservation: null },
+  { id: "T02", number: "2", seats: 2, section: "Window", status: "Occupied", order: "ORD-0042", waiter: "Selam T.", reservation: null },
   { id: "T03", number: "3", seats: 4, section: "Window", status: "Cleaning", order: null, reservation: null },
   { id: "T04", number: "4", seats: 4, section: "Main Hall", status: "Available", order: null, reservation: null },
-  { id: "T05", number: "5", seats: 4, section: "Main Hall", status: "Occupied", order: "ORD-0043", waiter: "Dawit", reservation: null },
+  { id: "T05", number: "5", seats: 4, section: "Main Hall", status: "Occupied", order: "ORD-0043", waiter: "Dawit M.", reservation: null },
   { id: "T06", number: "6", seats: 6, section: "Main Hall", status: "Reserved", order: null, reservation: "Bekele family" },
   { id: "T07", number: "7", seats: 6, section: "Main Hall", status: "Available", order: null, reservation: null },
   { id: "T08", number: "8", seats: 2, section: "Patio", status: "Out of Service", order: null, reservation: null },
   { id: "T09", number: "9", seats: 4, section: "Patio", status: "Available", order: null, reservation: null },
-  { id: "T10", number: "10", seats: 8, section: "Patio", status: "Occupied", order: "ORD-0044", waiter: "Selam", reservation: null },
+  { id: "T10", number: "10", seats: 8, section: "Patio", status: "Occupied", order: "ORD-0044", waiter: "Selam T.", reservation: null },
   { id: "T11", number: "11", seats: 4, section: "Private", status: "Reserved", order: null, reservation: "Aster T." },
   { id: "T12", number: "12", seats: 10, section: "Private", status: "Available", order: null, reservation: null },
 ];
@@ -61,19 +52,19 @@ export const menuCategories = [
 ];
 
 export const menuItems = [
-  { id: "M01", name: "Ful Medames", category: "Breakfast", price: 180, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "Breakfast", image: "https://images.unsplash.com/photo-1601050690597-48d26d0c15f1?w=400&q=80", variants: [{ name: "Regular", price: 180, multiplier: 1, default: true }, { name: "Large", price: 240, multiplier: 1.4 }], addons: [], hasRecipe: true },
-  { id: "M02", name: "Chechebsa", category: "Breakfast", price: 220, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "Breakfast", image: "https://images.unsplash.com/photo-1630829581355-fc4e7b8c3b3f?w=400&q=80", variants: [], addons: [{ name: "Extra Spice", price: 20 }], hasRecipe: true },
-  { id: "M03", name: "Doro Wot", category: "Main Dishes", price: 480, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=400&q=80", variants: [{ name: "Single", price: 480, multiplier: 1, default: true }, { name: "Sharing", price: 720, multiplier: 1.6 }], addons: [{ name: "Extra Injera", price: 30 }, { name: "Hard Boiled Egg", price: 40 }], hasRecipe: true },
-  { id: "M04", name: "Tibs Special", category: "Main Dishes", price: 520, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1606756790138-261d2c0b8c0f?w=400&q=80", variants: [{ name: "Regular", price: 520, multiplier: 1, default: true }, { name: "Large", price: 680, multiplier: 1.4 }], addons: [{ name: "Extra Injera", price: 30 }], hasRecipe: true },
-  { id: "M05", name: "Shiro Wot (Fasting)", category: "Main Dishes", price: 320, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1601050690597-48d26d0c15f1?w=400&q=80", variants: [], addons: [{ name: "Extra Injera", price: 30 }], hasRecipe: true },
-  { id: "M06", name: "Kitfo", category: "Main Dishes", price: 680, status: "Active", availability: "Unavailable", fasting: "Non-fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=400&q=80", variants: [{ name: "Regular", price: 680, multiplier: 1, default: true }], addons: [], hasRecipe: true },
-  { id: "M07", name: "Beyaynetu (Fasting Platter)", category: "Main Dishes", price: 360, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1601050690597-48d26d0c15f1?w=400&q=80", variants: [], addons: [], hasRecipe: true },
-  { id: "M08", name: "Bottled Water", category: "Drinks", price: 60, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1605609358847-9e3d8b9c3b3f?w=400&q=80", variants: [{ name: "500ml", price: 60, multiplier: 1, default: true }, { name: "1L", price: 90, multiplier: 1.5 }], addons: [], hasRecipe: true },
-  { id: "M09", name: "Fresh Mango Juice", category: "Drinks", price: 120, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1605609358847-9e3d8b9c3b3f?w=400&q=80", variants: [], addons: [], hasRecipe: true },
-  { id: "M10", name: "Sparkling Water", category: "Drinks", price: 80, status: "Inactive", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "", variants: [], addons: [], hasRecipe: false },
-  { id: "M11", name: "Tiramisu", category: "Desserts", price: 150, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&q=80", variants: [], addons: [], hasRecipe: true },
-  { id: "M12", name: "Macchiato", category: "Coffee", price: 70, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1601050690597-48d26d0c15f1?w=400&q=80", variants: [{ name: "Single", price: 70, multiplier: 1, default: true }, { name: "Double", price: 110, multiplier: 1.6 }], addons: [{ name: "Extra Shot", price: 25 }], hasRecipe: true },
-  { id: "M13", name: "Buna (Ethiopian Coffee)", category: "Coffee", price: 90, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "https://images.unsplash.com/photo-1601050690597-48d26d0c15f1?w=400&q=80", variants: [], addons: [], hasRecipe: true },
+  { id: "M01", name: "Ful Medames", category: "Breakfast", price: 180, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "Breakfast", image: "/images/menu/ful-medames.svg", variants: [{ name: "Regular", price: 180, multiplier: 1, default: true }, { name: "Large", price: 240, multiplier: 1.4 }], addons: [], hasRecipe: true },
+  { id: "M02", name: "Chechebsa", category: "Breakfast", price: 220, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "Breakfast", image: "/images/menu/chechebsa.svg", variants: [], addons: [{ name: "Extra Spice", price: 20 }], hasRecipe: true },
+  { id: "M03", name: "Doro Wot", category: "Main Dishes", price: 480, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "All day", image: "/images/menu/doro-wot.svg", variants: [{ name: "Single", price: 480, multiplier: 1, default: true }, { name: "Sharing", price: 720, multiplier: 1.6 }], addons: [{ name: "Extra Injera", price: 30 }, { name: "Hard Boiled Egg", price: 40 }], hasRecipe: true },
+  { id: "M04", name: "Tibs Special", category: "Main Dishes", price: 520, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "All day", image: "/images/menu/tibs-special.svg", variants: [{ name: "Regular", price: 520, multiplier: 1, default: true }, { name: "Large", price: 680, multiplier: 1.4 }], addons: [{ name: "Extra Injera", price: 30 }], hasRecipe: true },
+  { id: "M05", name: "Shiro Wot (Fasting)", category: "Main Dishes", price: 320, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/shiro-wot.svg", variants: [], addons: [{ name: "Extra Injera", price: 30 }], hasRecipe: true },
+  { id: "M06", name: "Kitfo", category: "Main Dishes", price: 680, status: "Active", availability: "Unavailable", fasting: "Non-fasting", mealPeriod: "All day", image: "/images/menu/kitfo.svg", variants: [{ name: "Regular", price: 680, multiplier: 1, default: true }], addons: [], hasRecipe: true },
+  { id: "M07", name: "Beyaynetu (Fasting Platter)", category: "Main Dishes", price: 360, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/beyaynetu.svg", variants: [], addons: [], hasRecipe: true },
+  { id: "M08", name: "Bottled Water", category: "Drinks", price: 60, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/bottled-water.svg", variants: [{ name: "500ml", price: 60, multiplier: 1, default: true }, { name: "1L", price: 90, multiplier: 1.5 }], addons: [], hasRecipe: true },
+  { id: "M09", name: "Fresh Mango Juice", category: "Drinks", price: 120, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/mango-juice.svg", variants: [], addons: [], hasRecipe: true },
+  { id: "M10", name: "Sparkling Water", category: "Drinks", price: 80, status: "Inactive", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/sparkling-water.svg", variants: [], addons: [], hasRecipe: false },
+  { id: "M11", name: "Tiramisu", category: "Desserts", price: 150, status: "Active", availability: "Available", fasting: "Non-fasting", mealPeriod: "All day", image: "/images/menu/tiramisu.svg", variants: [], addons: [], hasRecipe: true },
+  { id: "M12", name: "Macchiato", category: "Coffee", price: 70, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/macchiato.svg", variants: [{ name: "Single", price: 70, multiplier: 1, default: true }, { name: "Double", price: 110, multiplier: 1.6 }], addons: [{ name: "Extra Shot", price: 25 }], hasRecipe: true },
+  { id: "M13", name: "Buna (Ethiopian Coffee)", category: "Coffee", price: 90, status: "Active", availability: "Available", fasting: "Fasting", mealPeriod: "All day", image: "/images/menu/buna.svg", variants: [], addons: [], hasRecipe: true },
 ];
 
 export const mealPeriods = [
@@ -83,14 +74,23 @@ export const mealPeriods = [
 ];
 
 export const recipes = {
+  "M01": { instructions: "Soak chickpeas overnight, simmer with cumin and garlic, finish with olive oil and chopped onion.", lines: [{ item: "Chickpeas", qty: 180 }, { item: "Onion", qty: 40 }] },
+  "M02": { instructions: "Bake spiced dough in a covered pan until the top browns, brush with berbere butter.", lines: [{ item: "Butter", qty: 25 }, { item: "Awaze", qty: 10 }, { item: "Injera", qty: 1 }] },
   "M03": { instructions: "Slow-cook onion berbere base, add chicken pieces, hard-boiled eggs, simmer 40 min.", lines: [{ item: "Chicken", qty: 250 }, { item: "Onion", qty: 150 }, { item: "Berbere spice", qty: 40 }, { item: "Injera", qty: 2 }] },
   "M04": { instructions: "Sear beef tibs with awaze, rosemary, butter; serve sizzling.", lines: [{ item: "Beef", qty: 220 }, { item: "Awaze", qty: 30 }, { item: "Butter", qty: 20 }, { item: "Injera", qty: 2 }] },
+  "M05": { instructions: "Simmer Shiro with berbere and garlic, whisk in berbere butter off the heat.", lines: [{ item: "Chickpeas", qty: 180 }, { item: "Berbere spice", qty: 25 }, { item: "Butter", qty: 15 }, { item: "Injera", qty: 2 }] },
+  "M06": { instructions: "Mince beef with awaze, sear in butter, finish with mitmita.", lines: [{ item: "Beef", qty: 200 }, { item: "Awaze", qty: 40 }, { item: "Butter", qty: 30 }, { item: "Injera", qty: 2 }] },
+  "M07": { instructions: "Plate injera, fill with fasting stews and vegetable sides.", lines: [{ item: "Injera", qty: 2 }, { item: "Onion", qty: 60 }] },
+  "M08": { instructions: "Chill and serve in the 500ml bottle.", lines: [{ item: "Bottled Water", qty: 1 }] },
+  "M09": { instructions: "Blend fresh mango with water and a little sugar, strain, serve cold.", lines: [{ item: "Mango", qty: 2 }, { item: "Bottled Water", qty: 1 }] },
+  "M11": { instructions: "Whisk mascarpone with coffee and cocoa, layer with sponge, chill 4h.", lines: [{ item: "Milk", qty: 120 }, { item: "Coffee beans", qty: 15 }] },
   "M12": { instructions: "Pull single shot, top with steamed milk foam.", lines: [{ item: "Coffee beans", qty: 18 }, { item: "Milk", qty: 80 }] },
+  "M13": { instructions: "Pan-toast green coffee beans, grind fresh, brew in a jebena.", lines: [{ item: "Coffee beans", qty: 20 }] },
 };
 
 export const orders = [
   {
-    id: "ORD-0042", number: "0042", type: "Dine-in", table: "2", waiter: "Selam", customer: null, guests: 2,
+    id: "ORD-0042", number: "0042", type: "Dine-in", table: "2", waiter: "Selam T.", customer: null, guests: 2,
     status: "Active", created: "19:12", notes: "",
     tickets: [
       { round: 1, status: "Served", submittedAt: "19:13", items: [{ name: "Doro Wot", variant: "Single", qty: 2, price: 480, addons: ["Extra Injera"], note: "" }] },
@@ -99,19 +99,19 @@ export const orders = [
     discount: 0, invoice: null,
   },
   {
-    id: "ORD-0043", number: "0043", type: "Dine-in", table: "5", waiter: "Dawit", customer: "Abebe G.", guests: 3,
+    id: "ORD-0043", number: "0043", type: "Dine-in", table: "5", waiter: "Dawit M.", customer: "Abebe G.", guests: 3,
     status: "Served", created: "18:40", notes: "Window seat preferred",
     tickets: [{ round: 1, status: "Served", submittedAt: "18:41", items: [{ name: "Tibs Special", variant: "Regular", qty: 2, price: 520, addons: [], note: "" }, { name: "Fresh Mango Juice", variant: "", qty: 3, price: 120, addons: [], note: "" }] }],
     discount: 10, invoice: null,
   },
   {
-    id: "ORD-0044", number: "0044", type: "Dine-in", table: "10", waiter: "Selam", customer: null, guests: 7,
+    id: "ORD-0044", number: "0044", type: "Dine-in", table: "10", waiter: "Selam T.", customer: null, guests: 7,
     status: "Active", created: "19:30", notes: "",
     tickets: [{ round: 1, status: "Submitted", submittedAt: "19:31", items: [{ name: "Beyaynetu (Fasting Platter)", variant: "", qty: 4, price: 360, addons: [], note: "" }, { name: "Doro Wot", variant: "Sharing", qty: 1, price: 720, addons: ["Hard Boiled Egg"], note: "" }] }],
     discount: 0, invoice: null,
   },
   {
-    id: "ORD-0045", number: "0045", type: "Takeaway", table: null, waiter: "Dawit", customer: "Meron A.", guests: 1,
+    id: "ORD-0045", number: "0045", type: "Takeaway", table: null, waiter: "Dawit M.", customer: "Meron A.", guests: 1,
     status: "Active", created: "19:55", notes: "Pickup at 20:20",
     tickets: [{ round: 1, status: "Ready", submittedAt: "19:56", items: [{ name: "Shiro Wot (Fasting)", variant: "", qty: 2, price: 320, addons: ["Extra Injera"], note: "" }] }],
     discount: 0, invoice: null,
@@ -143,9 +143,10 @@ export const inventoryItems = [
   { id: "I06", name: "Coffee beans", category: "Dry goods", baseUnit: "g", qty: 3200, min: 2000, reorder: 6000, supplier: "Yirgacheffe Coop", status: "OK" },
   { id: "I07", name: "Milk", category: "Dairy", baseUnit: "ml", qty: 1800, min: 3000, reorder: 8000, supplier: "Shola Dairy", status: "Low" },
   { id: "I08", name: "Mango", category: "Vegetables", baseUnit: "pieces", qty: 22, min: 15, reorder: 40, supplier: "Merkato Veg", status: "OK" },
-  { id: "I09", name: "Bottled Water 500ml", category: "Beverages", baseUnit: "pieces", qty: 8, min: 24, reorder: 96, supplier: "Aqua Addis", status: "Low" },
+  { id: "I09", name: "Bottled Water", category: "Beverages", baseUnit: "pieces", qty: 8, min: 24, reorder: 96, supplier: "Aqua Addis", status: "Low" },
   { id: "I10", name: "Awaze", category: "Spices", baseUnit: "g", qty: 900, min: 500, reorder: 2000, supplier: "Spice House", status: "OK" },
   { id: "I11", name: "Butter", category: "Dairy", baseUnit: "g", qty: 600, min: 800, reorder: 2000, supplier: "Shola Dairy", status: "Low" },
+  { id: "I12", name: "Chickpeas", category: "Dry goods", baseUnit: "g", qty: 4200, min: 2000, reorder: 10000, supplier: "Merkato Veg", status: "OK" },
 ];
 
 export const stockMovements = [
@@ -154,7 +155,7 @@ export const stockMovements = [
   { id: "SM03", item: "Beef", qty: -4400, type: "Sale deduction", date: "Sep 29 18:45", user: "System", reason: "ORD-0043 served" },
   { id: "SM04", item: "Injera", qty: -8, type: "Sale deduction", date: "Sep 29 18:45", user: "System", reason: "ORD-0043 served" },
   { id: "SM05", item: "Berbere spice", qty: -500, type: "Adjustment", date: "Sep 29 16:00", user: "Inventory", reason: "Spillage during prep" },
-  { id: "SM06", item: "Bottled Water 500ml", qty: 48, type: "Emergency purchase", date: "Sep 29 12:30", user: "Inventory", reason: "Ran out during lunch" },
+  { id: "SM06", item: "Bottled Water", qty: 48, type: "Emergency purchase", date: "Sep 29 12:30", user: "Inventory", reason: "Ran out during lunch" },
 ];
 
 export const suppliers = [
@@ -164,6 +165,8 @@ export const suppliers = [
   { id: "S04", name: "Spice House", contact: "Yohannes", phone: "+251914567890", email: "", items: 2, status: "Active" },
   { id: "S05", name: "Yirgacheffe Coop", contact: "Tadesse", phone: "+251915678901", email: "tadesse@yirg.et", items: 1, status: "Active" },
   { id: "S06", name: "Shola Dairy", contact: "Helen", phone: "+251916789012", email: "", items: 2, status: "Active" },
+  { id: "S07", name: "Injera House", contact: "Marta", phone: "+251917890123", email: "orders@injerahouse.et", items: 1, status: "Active" },
+  { id: "S08", name: "Aqua Addis", contact: "Bekele", phone: "+251918901234", email: "sales@aquaaddis.et", items: 1, status: "Active" },
 ];
 
 export const purchases = [
@@ -175,12 +178,13 @@ export const purchases = [
   { id: "PO-0036", supplier: "Atlas Butcher", date: "Sep 28", status: "Rejected", lines: 1, total: 0, emergency: false, reason: "Price too high" },
 ];
 
+// Expense ids are EX-prefixed so they never collide with employee E-prefixed ids.
 export const expenses = [
-  { id: "E01", category: "Rent", amount: 60000, date: "Sep 01", description: "Monthly restaurant rent", status: "Confirmed", by: "Manager", receipt: false },
-  { id: "E02", category: "Utilities", amount: 8200, date: "Sep 15", description: "Electricity bill", status: "Confirmed", by: "Manager", receipt: true },
-  { id: "E03", category: "Cleaning supplies", amount: 1500, date: "Sep 22", description: "Detergents & wipes", status: "Confirmed", by: "Inventory", receipt: false },
-  { id: "E04", category: "Utilities", amount: 3500, date: "Oct 01", description: "Water bill (auto)", status: "Pending confirmation", by: "System", receipt: false },
-  { id: "E05", category: "Transportation", amount: 900, date: "Sep 28", description: "Supplier pickup fuel", status: "Confirmed", by: "Inventory", receipt: false },
+  { id: "EX01", category: "Rent", amount: 60000, date: "Sep 01", description: "Monthly restaurant rent", status: "Confirmed", by: "Manager", receipt: false },
+  { id: "EX02", category: "Utilities", amount: 8200, date: "Sep 15", description: "Electricity bill", status: "Confirmed", by: "Manager", receipt: true },
+  { id: "EX03", category: "Cleaning supplies", amount: 1500, date: "Sep 22", description: "Detergents & wipes", status: "Confirmed", by: "Inventory", receipt: false },
+  { id: "EX04", category: "Utilities", amount: 3500, date: "Oct 01", description: "Water bill (auto)", status: "Pending confirmation", by: "System", receipt: false },
+  { id: "EX05", category: "Transportation", amount: 900, date: "Sep 28", description: "Supplier pickup fuel", status: "Confirmed", by: "Inventory", receipt: false },
 ];
 
 export const cleaningTasks = [
@@ -202,6 +206,12 @@ export const assets = [
   { id: "A02", name: "Espresso Machine", category: "Kitchen Equipment", serial: "ESP-9912", purchase: "2023-06-01", warranty: "2025-12-01", location: "Coffee bar", status: "Active" },
   { id: "A03", name: "Generator 25kVA", category: "Power", serial: "GEN-25-07", purchase: "2021-09-15", warranty: "2024-09-15", location: "Backyard", status: "Under Maintenance" },
   { id: "A04", name: "Cold Room", category: "Refrigeration", serial: "CR-08", purchase: "2022-11-20", warranty: "2025-11-20", location: "Kitchen", status: "Active" },
+];
+
+export const expenseTemplates = [
+  { id: "TPL01", category: "Rent", frequency: "Monthly", day: 1, amount: 60000, lastRun: "Sep 01", active: true },
+  { id: "TPL02", category: "Utilities", frequency: "Monthly", day: 15, amount: 0, lastRun: "Sep 15", active: true },
+  { id: "TPL03", category: "Internet", frequency: "Monthly", day: 5, amount: 1200, lastRun: "Sep 05", active: false },
 ];
 
 export const maintenanceRequests = [
@@ -291,35 +301,3 @@ export const managedLists = {
   mealPeriods: mealPeriods,
   tableSections: ["Window", "Main Hall", "Patio", "Private"],
 };
-
-// ---- Billing calculation per PRD 11.1 ----
-export function calcBill(order) {
-  const lines = [];
-  let itemSubtotal = 0;
-  order.tickets.forEach((t) => {
-    t.items.forEach((it) => {
-      if (it.cancelled) return;
-      const lineTotal = it.price * it.qty;
-      itemSubtotal += lineTotal;
-      lines.push({ ...it, lineTotal });
-    });
-  });
-  const serviceRate = restaurant.serviceCharge / 100;
-  const serviceCharge = round2(itemSubtotal * serviceRate);
-  const discountRate = (order.discount || 0) / 100;
-  const discount = round2(itemSubtotal * discountRate);
-  const totalPayable = round2(itemSubtotal - discount + serviceCharge);
-  const taxableAmount = round2(itemSubtotal - discount);
-  const taxRate = restaurant.taxRate / 100;
-  const taxPortion = round2(taxableAmount * taxRate / (1 + taxRate));
-  const netSales = round2(taxableAmount - taxPortion);
-  return { lines, itemSubtotal, serviceCharge, discount, totalPayable, taxableAmount, taxPortion, netSales };
-}
-
-export function round2(n) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
-export function etb(n) {
-  return `${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}

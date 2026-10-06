@@ -5,6 +5,10 @@ const RESET_KEY = "rms_password_resets";
 const DEMO_EMAIL = "demo@mesob.restaurant";
 const DEMO_PASSWORD = "mesob1234";
 
+/* Reset links expire, otherwise a token captured once stays usable forever.
+   The UI copy claims a 15-minute window, so enforce it here. */
+const RESET_TTL_MS = 15 * 60 * 1000;
+
 const isBrowser = () => typeof window !== "undefined";
 
 function readJson(key, fallback) {
@@ -30,9 +34,12 @@ function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
+/* The demo store keeps plaintext passwords (documented, demo only). Everything
+   that reaches a component goes through here so the field is never passed on. */
 function publicUser(user) {
   if (!user) return null;
-  const { password, ...rest } = user;
+  const rest = { ...user };
+  delete rest.password;
   return rest;
 }
 
@@ -70,7 +77,9 @@ export async function signUpWithEmailPassword({ email, password, full_name = "" 
     email: normalized,
     password,
     full_name: full_name || normalized.split("@")[0],
-    role: "user",
+    /* Self-registration cannot grant privileges. Every ROLES id would be a
+       trust decision, so new accounts land on the least-privileged one. */
+    role: "waiter",
     provider: "credentials",
     created_at: new Date().toISOString(),
   };
@@ -91,7 +100,7 @@ export async function loginWithEmailPassword(email, password) {
 }
 
 export async function loginWithGoogle() {
-  const normalized = `${DEMO_EMAIL}`;
+  const normalized = DEMO_EMAIL;
   const users = seedDemoUser();
   let user = users.find((u) => u.email === normalized);
   if (!user) {
@@ -125,18 +134,26 @@ export async function signOut() {
 export async function requestPasswordReset(email) {
   const normalized = normalizeEmail(email);
   const resets = readJson(RESET_KEY, {});
-  resets[normalized] = { token: `rst_${Math.random().toString(36).slice(2, 10)}`, requested_at: new Date().toISOString() };
+  const token = `rst_${Math.random().toString(36).slice(2, 10)}`;
+  resets[normalized] = { token, requested_at: Date.now() };
   writeJson(RESET_KEY, resets);
-  return resets[normalized].token;
+  return token;
 }
 
 export async function resetPassword({ resetToken, newPassword }) {
   if (!newPassword) throw new Error("A new password is required");
   const resets = readJson(RESET_KEY, {});
-  const entry = Object.entries(resets).find(([, v]) => v.token === resetToken);
-  if (!entry) throw new Error("This reset link is invalid or has expired");
+  const match = Object.entries(resets).find(([, v]) => v.token === resetToken);
+  if (!match) throw new Error("This reset link is invalid or has expired");
 
-  const [email] = entry;
+  const [email, entry] = match;
+  const requestedAt = Number(entry.requested_at);
+  const expired = !Number.isFinite(requestedAt) || Date.now() - requestedAt > RESET_TTL_MS;
+  if (expired) {
+    delete resets[email];
+    writeJson(RESET_KEY, resets);
+    throw new Error("This reset link is invalid or has expired");
+  }
   const users = seedDemoUser().map((u) => (u.email === email ? { ...u, password: newPassword } : u));
   writeJson(USERS_KEY, users);
   delete resets[email];

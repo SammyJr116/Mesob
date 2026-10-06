@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { ROLES } from "./mockData";
+import { ROLES } from "./roles";
 
 const RoleContext = createContext(null);
 

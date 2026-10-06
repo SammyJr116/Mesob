@@ -1,44 +1,57 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, UtensilsCrossed, ClipboardList, ChefHat, Soup,
   Boxes, Truck, ShoppingCart, Receipt, Sparkles, Wrench, ShieldCheck,
   UserCog, BarChart3, ScrollText, Settings, Bell, User, ClipboardCheck,
-  Table2, BookOpen, LogOut, Menu, ChevronRight, AlertTriangle,
+  Table2, BookOpen, LogOut, Menu, ChevronRight, AlertTriangle, Search,
 } from "lucide-react";
 import { useRole } from "@/lib/RoleContext";
-import { restaurant, notifications } from "@/lib/mockData";
+import { useData } from "@/lib/DataContext";
+import CommandPalette from "@/components/CommandPalette";
 import { cn } from "@/lib/utils";
 
 const NAV_BY_ROLE = {
   manager: [
+    { group: "Operations" },
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/orders", label: "Orders", icon: ClipboardList },
     { to: "/tables", label: "Tables", icon: Table2 },
+    { to: "/reservations", label: "Reservations", icon: BookOpen },
+    { to: "/customers", label: "Customers", icon: User },
+    { to: "/cleaning", label: "Cleaning", icon: Sparkles },
+    { to: "/kitchen", label: "Kitchen Queue", icon: ChefHat },
+    { to: "/maintenance", label: "Maintenance", icon: Wrench },
+    { group: "Menu" },
     { to: "/menu", label: "Menu", icon: UtensilsCrossed },
     { to: "/recipes", label: "Recipes", icon: Soup },
-    { to: "/customers", label: "Customers", icon: User },
-    { to: "/reservations", label: "Reservations", icon: BookOpen },
+    { group: "Stock and finance" },
     { to: "/inventory", label: "Inventory", icon: Boxes },
     { to: "/suppliers", label: "Suppliers", icon: Truck },
     { to: "/purchases", label: "Purchases", icon: ShoppingCart },
     { to: "/expenses", label: "Expenses", icon: Receipt },
-    { to: "/cleaning", label: "Cleaning", icon: Sparkles },
-    { to: "/maintenance", label: "Maintenance", icon: Wrench },
-    { to: "/security", label: "Security", icon: ShieldCheck },
+    { group: "Admin" },
     { to: "/employees", label: "Employees", icon: UserCog },
+    { to: "/users", label: "Users", icon: Users },
     { to: "/reports", label: "Reports", icon: BarChart3 },
     { to: "/activity-log", label: "Activity Log", icon: ScrollText },
     { to: "/settings", label: "Settings", icon: Settings },
+    { group: "Security" },
+    { to: "/visitors", label: "Visitors", icon: ShieldCheck },
+    { to: "/incidents", label: "Incidents", icon: AlertTriangle },
+    { to: "/lost-found", label: "Lost & Found", icon: ScrollText },
   ],
   admin: [
     { to: "/users", label: "Users", icon: Users },
+    { to: "/employees", label: "Employees", icon: UserCog },
+    { to: "/activity-log", label: "Activity Log", icon: ScrollText },
   ],
   kitchen: [
     { to: "/kitchen", label: "Kitchen Queue", icon: ChefHat },
     { to: "/menu-availability", label: "Menu Availability", icon: UtensilsCrossed },
     { to: "/recipes", label: "Recipes", icon: Soup },
     { to: "/inventory", label: "Inventory (read-only)", icon: Boxes },
+    { to: "/maintenance", label: "Maintenance", icon: Wrench },
   ],
   waiter: [
     { to: "/tables", label: "Tables", icon: Table2 },
@@ -73,13 +86,41 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const { db } = useData();
+  const { restaurant, notifications } = db;
   const nav = NAV_BY_ROLE[role] || [];
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const unread = notifications.filter((n) => !n.read).length;
+  const isActive = (to) => location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
   const isPhoneRole = role === "cleaner" || role === "security";
 
   const handleSwitch = () => {
     setRole(null);
     navigate("/");
+  };
+
+  /* A detail screen like /orders/ORD-0042 should read "Orders · ORD-0042",
+     not the literal word "Page". Fall back to the segment itself so an
+     unlisted-but-valid route still shows something meaningful. */
+  const crumbLabel = () => {
+    const flat = nav.filter((n) => n.to);
+    const exact = flat.find((n) => n.to === location.pathname);
+    if (exact) return exact.label;
+    const parent = flat.filter((n) => location.pathname.startsWith(`${n.to}/`)).sort((a, b) => b.to.length - a.to.length)[0];
+    if (parent) return parent.label;
+    const segments = location.pathname.split("/").filter(Boolean);
+    return segments.length ? segments[segments.length - 1].replace(/-/g, " ") : ROLE_LABEL[role];
   };
 
   const SidebarContent = (
@@ -92,16 +133,28 @@ export default function Layout({ children }) {
         </div>
         <div className="leading-tight">
           <p className="font-display text-base font-semibold text-sidebar-accent-foreground">{restaurant.name}</p>
-          <p className="text-[11px] text-sidebar-foreground/55">{restaurant.tagline}</p>
+          <p className="text-2xs text-sidebar-foreground/55">{restaurant.tagline}</p>
         </div>
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-        {nav.map((item) => {
-          const active = location.pathname === item.to;
+      <nav aria-label="Primary" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
+        {nav.map((item, i) => {
+          if (item.group) {
+            return (
+              <p key={`g-${item.group}`}
+                className={cn(
+                  "px-3 pb-1 pt-4 text-2xs font-semibold uppercase tracking-group text-sidebar-foreground/40",
+                  i === 0 && "pt-0"
+                )}
+              >
+                {item.group}
+              </p>
+            );
+          }
+          const active = isActive(item.to);
           return (
-            <Link key={item.to} to={item.to} onClick={() => setMobileOpen(false)}
+            <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)}
               className={cn("sidebar-link", active && "sidebar-link-active")}>
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="truncate">{item.label}</span>
             </Link>
           );
@@ -114,9 +167,9 @@ export default function Layout({ children }) {
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-sm font-medium text-sidebar-accent-foreground">{ROLE_LABEL[role]}</p>
-            <p className="truncate text-[11px] text-sidebar-foreground/50">{current?.device} view</p>
+            <p className="truncate text-2xs text-sidebar-foreground/50">{current?.device} view</p>
           </div>
-          <button onClick={handleSwitch} title="Switch role" className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+          <button onClick={handleSwitch} aria-label="Switch role" title="Switch role" className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -141,8 +194,8 @@ export default function Layout({ children }) {
       {/* Mobile drawer (non-phone roles) */}
       {mobileOpen && !isPhoneRole && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-sidebar text-sidebar-foreground">{SidebarContent}</aside>
+          <button aria-label="Close navigation" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <aside role="dialog" aria-modal="true" aria-label="Navigation" className="absolute left-0 top-0 h-full w-64 bg-sidebar text-sidebar-foreground">{SidebarContent}</aside>
         </div>
       )}
 
@@ -150,27 +203,40 @@ export default function Layout({ children }) {
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-cream-50/80 px-4 backdrop-blur-md sm:px-6">
           {!isPhoneRole && (
-            <button className="lg:hidden" onClick={() => setMobileOpen(true)}>
+            <button aria-label="Open navigation" aria-expanded={mobileOpen} className="rounded-lg p-2 hover:bg-secondary lg:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="h-5 w-5" />
             </button>
           )}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{restaurant.name}</span>
             <ChevronRight className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{nav.find((n) => n.to === location.pathname)?.label || "Page"}</span>
+            <span className="hidden sm:inline">{crumbLabel()}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => navigate("/notifications")} className="relative rounded-lg p-2 hover:bg-secondary">
+            <button
+              aria-label="Search (Ctrl+K)"
+              aria-keyshortcuts="Control+K"
+              onClick={() => setPaletteOpen(true)}
+              className="hidden items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary sm:flex"
+            >
+              <Search aria-hidden="true" className="h-4 w-4" />
+              <span>Search</span>
+              <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 text-2xs font-medium">Ctrl K</kbd>
+            </button>
+            <button aria-label="Search" onClick={() => setPaletteOpen(true)} className="rounded-lg p-2 hover:bg-secondary sm:hidden">
+              <Search className="h-5 w-5" />
+            </button>
+            <button aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} onClick={() => navigate("/notifications")} className="relative rounded-lg p-2 hover:bg-secondary">
               <Bell className="h-5 w-5" />
               {unread > 0 && (
-                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{unread}</span>
+                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-berbere-500 px-1 text-2xs font-bold text-white">{unread}</span>
               )}
             </button>
-            <button onClick={() => navigate("/profile")} className="rounded-lg p-2 hover:bg-secondary">
+            <button aria-label="Your profile" onClick={() => navigate("/profile")} className="rounded-lg p-2 hover:bg-secondary">
               <User className="h-5 w-5" />
             </button>
             {isPhoneRole && (
-              <button onClick={handleSwitch} className="rounded-lg p-2 hover:bg-secondary">
+              <button aria-label="Switch role" onClick={handleSwitch} className="rounded-lg p-2 hover:bg-secondary">
                 <LogOut className="h-5 w-5" />
               </button>
             )}
@@ -178,25 +244,34 @@ export default function Layout({ children }) {
         </header>
 
         <main className={cn("flex-1", isPhoneRole ? "pb-20" : "pb-12")}>
-          <div className={cn("mx-auto w-full", isPhoneRole ? "max-w-md px-4 py-6" : "max-w-7xl px-5 py-8 sm:px-8 sm:py-10")}>
+          {/* Phone-role layouts stay narrow only on small screens; the cap is a
+              viewport decision, not a role one, so tablets and desktops get room. */}
+          <div
+            className={cn(
+              "mx-auto w-full px-4 py-6 sm:px-6",
+              isPhoneRole ? "max-w-md sm:max-w-3xl xl:max-w-5xl" : "max-w-7xl sm:px-8 sm:py-10"
+            )}
+          >
             {children}
           </div>
         </main>
 
         {/* Bottom nav for phone roles */}
         {isPhoneRole && (
-          <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-card">
-            {nav.map((item) => {
-              const active = location.pathname === item.to;
+          <nav aria-label="Quick navigation" className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
+            {nav.filter((item) => item.to).map((item) => {
+              const active = isActive(item.to);
               return (
-                <Link key={item.to} to={item.to} className={cn("flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium", active ? "text-primary" : "text-muted-foreground")}>
-                  <item.icon className="h-5 w-5" />
+                <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined} className={cn("flex flex-1 flex-col items-center gap-1 py-2.5 text-2xs font-medium", active ? "text-primary" : "text-muted-foreground")}>
+                  <item.icon aria-hidden="true" className="h-5 w-5" />
                   {item.label}
                 </Link>
               );
             })}
           </nav>
         )}
+
+        {paletteOpen && <CommandPalette nav={nav} onClose={() => setPaletteOpen(false)} />}
       </div>
     </div>
   );

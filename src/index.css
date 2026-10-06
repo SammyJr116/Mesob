@@ -103,7 +103,7 @@
   }
 
   .btn-soft {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-primary {
     @apply btn-soft bg-primary text-primary-foreground hover:brightness-105 shadow-[0_4px_14px_-6px_hsl(27_34%_46%_/_0.6)];

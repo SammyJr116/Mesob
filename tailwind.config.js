@@ -21,10 +21,10 @@ borderRadius: {
   			'gold': '0 2px 4px rgba(74,50,34,0.06), 0 8px 24px -8px hsl(32 46% 56% / 0.40)',
   			/* Hover lift for interactive cards — deeper and warmer than `warm`. */
   			'lift': '0 2px 4px rgba(74,50,34,0.05), 0 18px 40px -16px rgba(74,50,34,0.26)',
-  			/* Barely-there inner rim, gives cream cards a lit edge. */
-  			
-  			/* Soft pool of warm light, for hero panels. */
-  			'glow': '0 24px 70px -28px hsl(32 46% 46% / 0.55)'
+			/* Barely-there inner rim, gives cream cards a lit edge. */
+
+			/* Soft pool of warm light, for hero panels. */
+			'glow': '0 24px 70px -28px hsl(32 46% 46% / 0.55)'
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -151,26 +151,28 @@ borderRadius: {
   				ring: 'hsl(var(--sidebar-ring))'
   			}
   		},
+  		/* Named steps for the handful of sizes Tailwind's default scale
+  		   doesn't cover. Keeps the type ramp in one place instead of
+  		   scattering arbitrary values through the JSX. */
+  		fontSize: {
+  			'2xs': ['0.625rem', { lineHeight: '0.875rem' }],
+  			'eyebrow': ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.12em' }],
+  			'lede': ['0.9375rem', { lineHeight: '1.5rem' }],
+  			'page': ['1.75rem', { lineHeight: '2.125rem' }],
+  		},
+  		letterSpacing: {
+  			'eyebrow': '0.12em',
+  			'group': '0.14em',
+  			'brand': '0.3em',
+  		},
   		fontFamily: {
   			heading: ['var(--font-heading)'],
   			body: ['var(--font-body)'],
   			display: ['var(--font-display)'],
   			mono: ['var(--font-mono)']
   		},
-  		keyframes: {
-  			'accordion-down': {
-  				from: { height: '0' },
-  				to: { height: 'var(--radix-accordion-content-height)' }
-  			},
-  			'accordion-up': {
-  				from: { height: 'var(--radix-accordion-content-height)' },
-  				to: { height: '0' }
-  			}
-  		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
-  		}
+  		keyframes: {},
+  		animation: {}
   	}
   },
   plugins: [require("tailwindcss-animate")],

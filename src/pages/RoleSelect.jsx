@@ -2,7 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Monitor, Tablet, Smartphone, ChevronRight } from "lucide-react";
 import { useRole } from "@/lib/RoleContext";
-import { ROLES, restaurant } from "@/lib/mockData";
+import { useData } from "@/lib/DataContext";
+import { ROLES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 const DEVICE_ICON = { Desktop: Monitor, Tablet: Tablet, Phone: Smartphone };
@@ -34,6 +35,8 @@ const ARCHWAY = "/images/role-archway.png";
 
 export default function RoleSelect() {
   const { setRole } = useRole();
+  const { db } = useData();
+  const { restaurant } = db;
   const navigate = useNavigate();
 
   const choose = (r) => {
@@ -65,7 +68,7 @@ export default function RoleSelect() {
           <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
             <span className="text-gold-gradient">{restaurant.name}</span>
           </h1>
-          <p className="mt-3 text-sm uppercase tracking-[0.25em] text-muted-foreground">{restaurant.tagline}</p>
+          <p className="mt-3 text-sm uppercase tracking-brand text-muted-foreground">{restaurant.tagline}</p>
           <div className="rule-gold mt-6 max-w-[14rem]" />
         </div>
 

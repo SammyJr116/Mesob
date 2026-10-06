@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import { cn } from "@/lib/utils";
 
 /* Status palette drawn from the warm material set rather than the stock
@@ -52,20 +52,26 @@ const STATUS_STYLES = {
   Inactive: DARK,
 };
 
+/**
+ * @param {{ status: string, className?: string }} props
+ */
 export function StatusBadge({ status, className }) {
-  const style = STATUS_STYLES[status] || "bg-slate-100 text-slate-600";
+  const style = STATUS_STYLES[status] || IDLE;
   return <span className={cn("status-dot", style, className)}>{status}</span>;
 }
 
+/**
+ * @param {{ title: string, subtitle?: string, actions?: import("react").ReactNode }} props
+ */
 export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground sm:text-[2rem]">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-muted-foreground">
+      <h1 className="font-display text-page font-semibold leading-tight tracking-tight text-foreground sm:text-[2rem]">
+        {title}
+      </h1>
+      {subtitle && (
+        <p className="mt-2 max-w-2xl text-lede leading-relaxed text-muted-foreground">
             {subtitle}
           </p>
         )}
@@ -75,45 +81,50 @@ export function PageHeader({ title, subtitle, actions }) {
   );
 }
 
+/** @param {any} props */
 export function StatCard({ label, value, sub, icon: Icon, tone = "default", onClick }) {
   /* Value colour carries the signal; the top rule and icon follow the tone so
      a row of tiles reads as one set instead of unrelated cards. */
   const tones = {
     default: "text-foreground",
-    amber: "text-gold-600",
-    emerald: "text-sage-600",
-    rose: "text-berbere-500",
-    sky: "text-terracotta-500",
-    indigo: "text-wood-500",
+    gold: "text-gold-600",
+    sage: "text-sage-600",
+    berbere: "text-berbere-500",
+    terracotta: "text-terracotta-500",
+    wood: "text-wood-500",
   };
   const ruleTones = {
     default: "before:bg-gold/70",
-    amber: "before:bg-gold",
-    emerald: "before:bg-sage-400",
-    rose: "before:bg-berbere-400",
-    sky: "before:bg-terracotta-400",
-    indigo: "before:bg-wood-400",
+    gold: "before:bg-gold",
+    sage: "before:bg-sage-400",
+    berbere: "before:bg-berbere-400",
+    terracotta: "before:bg-terracotta-400",
+    wood: "before:bg-wood-400",
   };
   const chipTones = {
     default: "bg-sand-200 text-walnut-600",
-    amber: "bg-gold-100 text-gold-600",
-    emerald: "bg-sage-100 text-sage-600",
-    rose: "bg-berbere-100 text-berbere-600",
-    sky: "bg-terracotta-100 text-terracotta-600",
-    indigo: "bg-sand-200 text-walnut-600",
+    gold: "bg-gold-100 text-gold-600",
+    sage: "bg-sage-100 text-sage-600",
+    berbere: "bg-berbere-100 text-berbere-600",
+    terracotta: "bg-terracotta-100 text-terracotta-600",
+    wood: "bg-sand-200 text-walnut-600",
   };
+  const Wrapper = onClick ? "button" : "div";
   return (
-    <button
-      onClick={onClick}
+    <Wrapper
+      {...(onClick ? { type: "button", onClick } : {})}
+      aria-label={onClick ? `${label}: ${value}` : undefined}
       className={cn(
         "card-soft group relative flex flex-col gap-2 overflow-hidden p-5 text-left transition-all duration-200",
         "before:absolute before:inset-x-0 before:top-0 before:h-1 before:content-['']",
-        onClick ? "cursor-pointer hover:-translate-y-0.5 hover:border-border hover:shadow-lift" : "hover:shadow-warm",
+        onClick
+          ? "cursor-pointer hover:-translate-y-0.5 hover:border-border hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          : "hover:shadow-warm",
         ruleTones[tone]
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-eyebrow font-semibold uppercase text-muted-foreground">
           {label}
         </span>
         {Icon && (
@@ -122,14 +133,17 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
           </span>
         )}
       </div>
-      <span className={cn("tabular font-display text-[1.75rem] font-semibold leading-none", tones[tone])}>
+      <span className={cn("tabular font-display text-page font-semibold leading-none", tones[tone])}>
         {value}
       </span>
       {sub && <span className="text-xs leading-relaxed text-muted-foreground">{sub}</span>}
-    </button>
+    </Wrapper>
   );
 }
 
+/**
+ * @param {{ title: string, description?: string, icon?: import("lucide-react").LucideIcon, action?: import("react").ReactNode }} props
+ */
 export function EmptyState({ title, description, icon: Icon, action }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gold/30 bg-sand-100/50 px-6 py-16 text-center">
@@ -143,15 +157,23 @@ export function EmptyState({ title, description, icon: Icon, action }) {
   );
 }
 
-export function SearchInput({ value, onChange, placeholder = "Search…" }) {
+/**
+ * @param {{ value: string, onChange: (v: string) => void, placeholder?: string, label?: string }} props
+ */
+export function SearchInput({ value, onChange, placeholder = "Search…", label }) {
+  const id = useId();
   return (
     <div className="relative">
-      <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="input-soft pl-9" />
+      <label htmlFor={id} className="sr-only">{label || placeholder}</label>
+      <svg aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input id={id} type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="input-soft pl-9" />
     </div>
   );
 }
 
+/**
+ * @param {{ title?: string, action?: import("react").ReactNode, children: import("react").ReactNode, className?: string }} props
+ */
 export function SectionCard({ title, action, children, className }) {
   return (
     <div className={cn("card-soft p-6", className)}>

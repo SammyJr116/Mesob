@@ -1,48 +1,38 @@
 import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva } from "class-variance-authority";
 
 import { cn } from "@/lib/utils"
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline:
-          "border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
+/* The app's buttons are defined once, as CSS component classes in index.css
+   (`.btn-soft` plus the `.btn-primary` / `.btn-outline` / `.btn-ghost` /
+   `.btn-destructive` variants). This component is a thin wrapper over those
+   classes so the auth screens and the in-app pages share one button style
+   rather than a second, parallel variant set. */
+const VARIANT_CLASS = {
+  default: "btn-primary",
+  primary: "btn-primary",
+  outline: "btn-outline",
+  ghost: "btn-ghost",
+  secondary: "btn-ghost",
+  destructive: "btn-destructive",
+}
 
-const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button"
+const SIZE_CLASS = {
+  default: "",
+  sm: "px-3 py-1.5 text-xs",
+  lg: "px-8",
+  icon: "h-10 w-10 px-0",
+}
+
+const Button = React.forwardRef((/** @type {any} */ props, ref) => {
+  const { className, variant = "default", size = "default", ...rest } = props
   return (
-    (<Comp
-      className={cn(buttonVariants({ variant, size, className }))}
+    <button
       ref={ref}
-      {...props} />)
-  );
+      className={cn("btn-soft", VARIANT_CLASS[variant] || VARIANT_CLASS.default, SIZE_CLASS[size], className)}
+      {...rest}
+    />
+  )
 })
 Button.displayName = "Button"
 
-export { Button, buttonVariants }
+export { Button }
