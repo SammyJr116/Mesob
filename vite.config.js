@@ -10,4 +10,9 @@ export default defineConfig({
       '@': path.resolve(process.cwd(), './src'),
     },
   },
+  server: {
+    watch: {
+      ignored: ['**/*.md', '**/.git/**', '**/dist/**'],
+    },
+  },
 })
