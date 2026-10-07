@@ -91,6 +91,21 @@ export function DataProvider({ children }) {
     }
   }, [db]);
 
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setDb(parsed);
+        } catch {
+          // ignore invalid json
+        }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const setCollection = useCallback((name, next) => {
     setDb((prev) => ({ ...prev, [name]: typeof next === "function" ? next(prev[name]) : next }));
   }, []);

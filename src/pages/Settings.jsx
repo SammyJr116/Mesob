@@ -81,7 +81,7 @@ export default function Settings() {
   return (
     <div>
       <PageHeader
-        title="Settings"
+        title="ማስተካከያ · Settings"
         subtitle="Only the Manager can view and change Settings. Every change to tax rate, service charge and listed settings is written to the activity log."
         actions={
           <button onClick={save} disabled={saving} className="btn-primary">

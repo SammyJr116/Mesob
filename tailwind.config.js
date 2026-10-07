@@ -119,6 +119,20 @@ borderRadius: {
   			800: '#261913',
   			900: '#1B110C'
   		},
+  		/* Deep Ethiopian forest green & coffee leaf */
+  		forest: {
+  			DEFAULT: '#1C3B2B',
+  			50: '#F0F5F2',
+  			100: '#DCE8E1',
+  			200: '#BCD2C5',
+  			300: '#94B7A2',
+  			400: '#5E9374',
+  			500: '#2E6F4E',
+  			600: '#1C3B2B',
+  			700: '#152C20',
+  			800: '#0E1F16',
+  			900: '#08120D'
+  		},
   		/* Natural greenery — used sparingly for growth/health signals. */
   		sage: {
   			DEFAULT: '#5D7553',

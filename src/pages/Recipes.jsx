@@ -34,7 +34,7 @@ export default function Recipes() {
   return (
     <div>
       <PageHeader
-        title="Recipes"
+        title="የምግብ አዘገጃጀት · Traditional Recipes"
         subtitle={`${restaurant.inventoryTracking ? "Inventory tracking is on: an item cannot be activated without a recipe." : "Inventory tracking is off: recipes are optional."} Quantities use the item's base unit. Edits affect future deductions only.`}
         actions={<button onClick={() => setShowNew(true)} className="btn-primary" disabled={!canEdit}><Plus className="h-4 w-4" /> New recipe</button>}
       />

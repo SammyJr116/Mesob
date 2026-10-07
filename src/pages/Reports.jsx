@@ -93,7 +93,7 @@ export default function Reports() {
   return (
     <div>
       <PageHeader
-        title="Reports"
+        title="ሪፖርቶች · Reports & Analytics"
         subtitle="Visible to the Manager only. Figures are derived from the same orders the kitchen and billing screens use. CSV for data reports; a printable summary for the end-of-day close."
         actions={<button onClick={exportCsv} className="btn-outline"><Download className="h-4 w-4" /> Export CSV</button>}
       />

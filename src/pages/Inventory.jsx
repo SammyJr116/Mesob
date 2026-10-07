@@ -102,7 +102,7 @@ export default function Inventory() {
   return (
     <div>
       <PageHeader
-        title="Inventory"
+        title="ዕቃ ግምጃ ቤት · Inventory"
         subtitle={
           canEdit
             ? `Tracking is ${restaurant.inventoryTracking ? "ON — recipe-based deduction active" : "OFF — recipes optional, no auto deduction"}. Quantities in base unit.`

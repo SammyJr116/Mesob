@@ -7,6 +7,7 @@ import { useData } from "@/lib/DataContext";
 import { etb } from "@/lib/format";
 import { nextId } from "@/lib/datetime";
 import { notifySuccess, notifyError } from "@/lib/notify";
+import { MesobIcon, JebenaIcon } from "@/components/HabeshaDecorations";
 import { cn } from "@/lib/utils";
 
 const MEAL_PERIODS = ["All day", "Breakfast", "Lunch", "Dinner"];
@@ -210,42 +211,93 @@ export default function Menu() {
           pageSize={10}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((m) => (
-            <div key={m.id} className="card-soft group overflow-hidden p-0 transition-all hover:-translate-y-1 hover:shadow-warm">
-              <div className="relative h-32 w-full overflow-hidden rounded-t-2xl bg-secondary">
-                {m.image ? (
-                  <img src={m.image} alt={m.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image</div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-walnut/60 via-transparent to-transparent" />
-                <span className={cn("absolute right-2 top-2 rounded-full px-2 py-0.5 text-2xs font-semibold backdrop-blur", m.fasting === "Fasting" ? "bg-sage/85 text-cream" : "bg-berbere/85 text-cream")}>{m.fasting}</span>
-                {m.availability === "Unavailable" && (
-                  <span className="absolute left-2 top-2 rounded-full bg-berbere-600/90 px-2 py-0.5 text-2xs font-semibold text-white backdrop-blur">Unavailable</span>
-                )}
-              </div>
-              <div className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-display text-base font-semibold leading-tight">{m.name}</p>
-                  <span className="shrink-0 font-display text-base font-semibold text-primary">{etb(m.price)} <span className="text-xs text-muted-foreground">ETB</span></span>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((m) => {
+            const isFasting = m.fasting === "Fasting";
+            const isSpicy = ["Doro Wot", "Tibs Special", "Kitfo"].some((name) => m.name.includes(name));
+            const isCoffee = m.category === "Coffee" || m.name.toLowerCase().includes("buna") || m.name.toLowerCase().includes("macchiato");
+            return (
+              <div key={m.id} className="card-soft mesob-card-hover group overflow-hidden p-0 transition-all hover:border-gold-300/80 shadow-warm">
+                <div className="relative h-44 w-full overflow-hidden bg-sand-200">
+                  {m.image ? (
+                    <img src={m.image} alt={m.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground flex-col gap-1">
+                      <MesobIcon className="h-6 w-6 text-gold-500 opacity-60" />
+                      <span>No image</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-walnut-950/80 via-walnut-900/20 to-transparent" />
+                  
+                  {/* Ethiopian cultural tags */}
+                  <div className="absolute top-2.5 right-2.5 flex flex-col gap-1 items-end">
+                    {isFasting && (
+                      <span className="rounded-full bg-forest-700/90 border border-forest-500/50 px-2.5 py-0.5 text-2xs font-semibold text-cream shadow-sm backdrop-blur">
+                        🌱 ጾም (Fasting)
+                      </span>
+                    )}
+                    {isSpicy && (
+                      <span className="rounded-full bg-berbere-700/90 border border-berbere-500/50 px-2.5 py-0.5 text-2xs font-semibold text-cream shadow-sm backdrop-blur">
+                        🌶️ Berbere
+                      </span>
+                    )}
+                    {isCoffee && (
+                      <span className="rounded-full bg-gold-700/90 border border-gold-400/50 px-2.5 py-0.5 text-2xs font-semibold text-cream shadow-sm backdrop-blur flex items-center gap-1">
+                        <JebenaIcon className="h-3 w-3" /> Buna
+                      </span>
+                    )}
+                  </div>
+
+                  {m.availability === "Unavailable" && (
+                    <span className="absolute left-2.5 top-2.5 rounded-full bg-berbere-600/95 border border-berbere-400/50 px-2.5 py-0.5 text-2xs font-bold text-white shadow-sm backdrop-blur">
+                      Unavailable
+                    </span>
+                  )}
+
+                  {/* Card image bottom overlay info */}
+                  <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between text-cream">
+                    <span className="text-2xs font-medium uppercase tracking-wider text-gold-300 bg-walnut-950/60 px-2 py-0.5 rounded backdrop-blur-sm">
+                      {m.category}
+                    </span>
+                    <span className="font-display text-lg font-bold text-gold-200 drop-shadow">
+                      {etb(m.price)} <span className="text-2xs font-sans text-cream/80">ETB</span>
+                    </span>
+                  </div>
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{m.category} · {m.mealPeriod}</p>
-                <div className="mt-2 flex flex-wrap gap-1 text-2xs text-muted-foreground">
-                  {m.variants.length > 0 && <span className="rounded bg-secondary px-1.5 py-0.5">{m.variants.length} variants</span>}
-                  {m.addons.length > 0 && <span className="rounded bg-secondary px-1.5 py-0.5">{m.addons.length} add-ons</span>}
-                  {m.hasRecipe ? <span className="rounded bg-sage-100 px-1.5 py-0.5 text-sage-700">Recipe</span> : <span className="rounded bg-gold-100 px-1.5 py-0.5 text-gold-600">No recipe</span>}
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <StatusBadge status={m.status} />
-                  <div className="flex gap-0.5">
-                    <button onClick={() => openEdit(m)} aria-label={`Edit ${m.name}`} className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => remove(m)} aria-label={`Remove ${m.name}`} className="rounded-md p-1.5 text-muted-foreground hover:bg-berbere-100 hover:text-berbere-600"><Trash2 className="h-4 w-4" /></button>
+
+                <div className="p-4 flex flex-col flex-1">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="font-display text-lg font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+                      {m.name}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{m.mealPeriod} · Served fresh with authentic Habesha spices</p>
+                  
+                  <div className="mt-3 flex flex-wrap gap-1.5 text-2xs text-muted-foreground">
+                    {m.variants.length > 0 && <span className="rounded-md bg-secondary/80 border border-border/60 px-2 py-0.5 font-medium">{m.variants.length} sizes</span>}
+                    {m.addons.length > 0 && <span className="rounded-md bg-secondary/80 border border-border/60 px-2 py-0.5 font-medium">Extra Injera/Add-ons</span>}
+                    {m.hasRecipe ? (
+                      <span className="rounded-md bg-forest-50 border border-forest-200 px-2 py-0.5 font-medium text-forest-700">Heritage Recipe</span>
+                    ) : (
+                      <span className="rounded-md bg-gold-50 border border-gold-200 px-2 py-0.5 font-medium text-gold-700">No recipe</span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+                    <StatusBadge status={m.status} />
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => openEdit(m)} aria-label={`Edit ${m.name}`} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => remove(m)} aria-label={`Remove ${m.name}`} className="rounded-lg p-2 text-muted-foreground hover:bg-berbere-100 hover:text-berbere-600 transition">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

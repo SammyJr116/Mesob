@@ -4,9 +4,16 @@ import { PageHeader } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
 import { useData } from "@/lib/DataContext";
 import { minutesSince } from "@/lib/datetime";
+import { notifySuccess, playAlertChime } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 const OPEN = ["Submitted", "Preparing", "Ready"];
+
+const STATUS_LABELS = {
+  Submitted: { amharic: "አዲስ ትዕዛዝ", label: "New Order", color: "border-primary/40 bg-primary/5 text-primary" },
+  Preparing: { amharic: "በዝግጅት ላይ", label: "Preparing", color: "border-amber-300 bg-amber-50 text-amber-800" },
+  Ready: { amharic: "ተዘጋጅቷል", label: "Ready to Serve", color: "border-forest-400 bg-forest-50 text-forest-800" },
+};
 
 export default function KitchenQueue() {
   const { db, updateItem, insertItem } = useData();
@@ -44,14 +51,19 @@ export default function KitchenQueue() {
       tickets: o.tickets.map((t) => (t.round === round && t.status === from ? { ...t, status: to } : t)),
     }));
     if (to === "Ready") {
+      const location = order.table ? `Table ${order.table}` : "Takeaway";
       insertItem("notifications", {
         id: `N${Date.now()}`,
         event: "Ticket Ready",
-        detail: `${orderId} — ${order.number}`,
+        detail: `${orderId} — ${order.number} (${location})`,
         time: new Date().toTimeString().slice(0, 5),
         read: false,
         sound: true,
       });
+      notifySuccess(`Ticket Ready: ${order.number}-${round}`, `${location} is ready for waiter to serve!`);
+      if (soundOn) {
+        playAlertChime();
+      }
     }
   };
 
@@ -77,8 +89,8 @@ export default function KitchenQueue() {
   return (
     <div>
       <PageHeader
-        title="Kitchen queue"
-        subtitle="One queue for all items — food, drinks and coffee. No station routing."
+        title="ማዕድ ቤት · Kitchen Queue"
+        subtitle="Live orders for traditional wots, clay pot tibs, and Jebena Buna coffee. Fasting and fresh orders prioritized."
         actions={
           <button onClick={() => setSoundOn((s) => !s)} className={cn("btn-outline", soundOn && "bg-sage-50 text-sage-700 border-sage-200")}>
             {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
@@ -98,13 +110,20 @@ export default function KitchenQueue() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {Object.entries(groups).map(([status, list]) => (
-          <div key={status} className="card-soft p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold">{status === "Submitted" ? "New" : status}</h2>
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold">{list.length}</span>
-            </div>
-            <div className="space-y-3">
+        {Object.entries(groups).map(([status, list]) => {
+          const meta = STATUS_LABELS[status];
+          return (
+            <div key={status} className="card-soft p-4">
+              <div className="mb-3 flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-lg font-semibold">{meta ? meta.label : status}</span>
+                  {meta && (
+                    <span className="text-xs text-muted-foreground font-medium">({meta.amharic})</span>
+                  )}
+                </div>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold">{list.length}</span>
+              </div>
+              <div className="space-y-3">
               {list.map((t) => {
                 const waited = minutesSince(t.submittedAt, now);
                 const delayed = status !== "Ready" && waited !== null && waited >= restaurant.delayThreshold;
@@ -149,7 +168,8 @@ export default function KitchenQueue() {
               {list.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No tickets.</p>}
             </div>
           </div>
-        ))}
+        );
+      })}
       </div>
 
       {rejecting && (

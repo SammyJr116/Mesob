@@ -1,9 +1,10 @@
 import React, { useId } from "react";
 import { cn } from "@/lib/utils";
+import { MesobIcon } from "@/components/HabeshaDecorations";
 
 /* Status palette drawn from the warm material set rather than the stock
    cool greys, so badges sit in the same world as the cream surfaces.
-   Meaning is carried by hue family: sage = good, gold = in progress,
+   Meaning is carried by hue family: forest = authentic vegan/good, sage = good, gold = in progress,
    clay/berbere = problem, cream = dormant. */
 const GOOD = "bg-sage-100 text-sage-700";
 const WORK = "bg-gold-100 text-gold-600";
@@ -11,6 +12,7 @@ const LIVE = "bg-terracotta-100 text-terracotta-600";
 const WARN = "bg-berbere-100 text-berbere-600";
 const IDLE = "bg-sand-200 text-walnut-600";
 const DARK = "bg-walnut-800 text-cream-300";
+const FOREST = "bg-forest-100 text-forest-700 font-medium";
 
 const STATUS_STYLES = {
   Available: GOOD,
@@ -20,7 +22,7 @@ const STATUS_STYLES = {
   "Out of Service": DARK,
   Active: WORK,
   Draft: IDLE,
-  Served: LIVE,
+  Served: GOOD,
   Completed: GOOD,
   Cancelled: IDLE,
   Submitted: WORK,
@@ -50,6 +52,8 @@ const STATUS_STYLES = {
   "Under Maintenance": WORK,
   Retired: DARK,
   Inactive: DARK,
+  Fasting: FOREST,
+  "Non-fasting": IDLE,
 };
 
 /**
@@ -67,14 +71,15 @@ export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-      <h1 className="font-display text-page font-semibold leading-tight tracking-tight text-foreground sm:text-[2rem]">
-        {title}
-      </h1>
-      {subtitle && (
-        <p className="mt-2 max-w-2xl text-lede leading-relaxed text-muted-foreground">
+        <h1 className="font-display text-page font-semibold leading-tight tracking-tight text-foreground sm:text-[2rem]">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="mt-2 max-w-2xl text-lede leading-relaxed text-muted-foreground">
             {subtitle}
           </p>
         )}
+        <div className="mt-2.5 h-0.5 w-16 bg-gradient-to-r from-gold-500 via-forest-500 to-transparent rounded-full" />
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -88,6 +93,7 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
   const tones = {
     default: "text-foreground",
     gold: "text-gold-600",
+    forest: "text-forest-600",
     sage: "text-sage-600",
     berbere: "text-berbere-500",
     terracotta: "text-terracotta-500",
@@ -96,6 +102,7 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
   const ruleTones = {
     default: "before:bg-gold/70",
     gold: "before:bg-gold",
+    forest: "before:bg-forest-500",
     sage: "before:bg-sage-400",
     berbere: "before:bg-berbere-400",
     terracotta: "before:bg-terracotta-400",
@@ -104,6 +111,7 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
   const chipTones = {
     default: "bg-sand-200 text-walnut-600",
     gold: "bg-gold-100 text-gold-600",
+    forest: "bg-forest-100 text-forest-700",
     sage: "bg-sage-100 text-sage-600",
     berbere: "bg-berbere-100 text-berbere-600",
     terracotta: "bg-terracotta-100 text-terracotta-600",
@@ -115,11 +123,11 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
       {...(onClick ? { type: "button", onClick } : {})}
       aria-label={onClick ? `${label}: ${value}` : undefined}
       className={cn(
-        "card-soft group relative flex flex-col gap-2 overflow-hidden p-5 text-left transition-all duration-200",
+        "card-soft mesob-card-hover group relative flex flex-col gap-2 overflow-hidden p-5 text-left transition-all duration-200",
         "before:absolute before:inset-x-0 before:top-0 before:h-1 before:content-['']",
         onClick
-          ? "cursor-pointer hover:-translate-y-0.5 hover:border-border hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          : "hover:shadow-warm",
+          ? "cursor-pointer hover:border-gold-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          : "",
         ruleTones[tone]
       )}
     >
@@ -128,7 +136,7 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
           {label}
         </span>
         {Icon && (
-          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", chipTones[tone])}>
+          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform group-hover:scale-105", chipTones[tone])}>
             <Icon className="h-4 w-4" />
           </span>
         )}
@@ -142,15 +150,18 @@ export function StatCard({ label, value, sub, icon: Icon, tone = "default", onCl
 }
 
 /**
- * @param {{ title: string, description?: string, icon?: import("lucide-react").LucideIcon, action?: import("react").ReactNode }} props
+ * @param {{ title: string, description?: string, icon?: import("react").ElementType, action?: import("react").ReactNode }} props
  */
 export function EmptyState({ title, description, icon: Icon, action }) {
+  const DisplayIcon = Icon || MesobIcon;
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gold/30 bg-sand-100/50 px-6 py-16 text-center">
-      {Icon && <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-100 text-gold-600"><Icon className="h-6 w-6" /></div>}
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gold-300/60 bg-sand-100/40 px-6 py-14 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-100 text-gold-600 shadow-sm ring-1 ring-gold-200">
+        <DisplayIcon className="h-6 w-6" />
+      </div>
       <div>
-        <p className="font-medium text-foreground">{title}</p>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        <p className="font-display text-base font-semibold text-foreground">{title}</p>
+        {description && <p className="mt-1 text-sm text-muted-foreground max-w-sm">{description}</p>}
       </div>
       {action}
     </div>

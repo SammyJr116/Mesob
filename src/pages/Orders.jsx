@@ -44,14 +44,31 @@ export default function Orders() {
     { key: "waiter", header: "Waiter", sortable: true, render: (o) => (isManager ? o.waiter : "—") },
     { key: "customer", header: "Customer", sortable: true, sortValue: (o) => o.customer || "zz", render: (o) => <span className="text-muted-foreground">{o.customer || "—"}</span> },
     { key: "created", header: "Created", sortable: true, sortValue: (o) => o.created, render: (o) => <span className="text-muted-foreground">{o.created}</span> },
-    { key: "status", header: "Status", sortable: true, render: (o) => <StatusBadge status={o.status} /> },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (o) => {
+        const hasReady = (o.tickets || []).some((t) => t.status === "Ready");
+        return (
+          <div className="flex items-center gap-1.5">
+            <StatusBadge status={o.status} />
+            {hasReady && (
+              <span className="rounded-full bg-sage-100 border border-sage-300 px-2 py-0.5 text-2xs font-bold text-sage-800 animate-pulse">
+                Food Ready
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
     { key: "tickets", header: "Tickets", align: "right", sortable: true, sortValue: (o) => o.tickets.length, render: (o) => <span className="text-muted-foreground">{o.tickets.length}</span> },
   ];
 
   return (
     <div>
       <PageHeader
-        title="Orders"
+        title="ትዕዛዞች · Orders"
         subtitle={isManager ? "All orders are visible. A waiter edits only the orders they own." : "You see the orders you own. Ask a Manager for anything else."}
         actions={<button onClick={() => navigate("/orders/new")} className="btn-primary"><Plus className="h-4 w-4" /> New order</button>}
       />

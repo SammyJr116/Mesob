@@ -1,5 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import ScrollToTop from './components/ScrollToTop';
 import { RoleProvider, useRole } from '@/lib/RoleContext';
@@ -50,7 +50,7 @@ const Shell = () => {
         <Route path="/profile" element={<Profile />} />
 
         {/* Operations */}
-        <Guarded roles={["manager", "admin", "waiter"]}>
+        <Route element={<Guarded roles={["manager", "admin", "waiter"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tables" element={<Tables />} />
           <Route path="/orders" element={<Orders />} />
@@ -58,61 +58,61 @@ const Shell = () => {
           <Route path="/orders/new" element={<NewOrder />} />
           <Route path="/reservations" element={<Reservations />} />
           <Route path="/customers" element={<Customers />} />
-        </Guarded>
+        </Route>
 
         {/* Kitchen */}
-        <Guarded roles={["manager", "admin", "kitchen", "waiter"]}>
+        <Route element={<Guarded roles={["manager", "admin", "kitchen", "waiter"]} />}>
           <Route path="/kitchen" element={<KitchenQueue />} />
           <Route path="/menu-availability" element={<MenuAvailability />} />
           <Route path="/recipes" element={<Recipes />} />
-        </Guarded>
+        </Route>
 
         {/* Menu authoring is manager/admin only; kitchen only toggles availability. */}
-        <Guarded roles={["manager", "admin"]}>
+        <Route element={<Guarded roles={["manager", "admin"]} />}>
           <Route path="/menu" element={<Menu />} />
-        </Guarded>
+        </Route>
 
         {/* Stock and purchasing. Kitchen sees inventory read-only, matching its nav. */}
-        <Guarded roles={["manager", "admin", "inventory", "kitchen"]}>
+        <Route element={<Guarded roles={["manager", "admin", "inventory", "kitchen"]} />}>
           <Route path="/inventory" element={<Inventory />} />
-        </Guarded>
-        <Guarded roles={["manager", "admin", "inventory"]}>
+        </Route>
+        <Route element={<Guarded roles={["manager", "admin", "inventory"]} />}>
           <Route path="/suppliers" element={<Suppliers />} />
           <Route path="/purchases" element={<Purchases />} />
-        </Guarded>
+        </Route>
 
         {/* Finance — visible to all three, but the page itself scopes by role. */}
-        <Guarded roles={["manager", "admin", "inventory"]}>
+        <Route element={<Guarded roles={["manager", "admin", "inventory"]} />}>
           <Route path="/expenses" element={<Expenses />} />
-        </Guarded>
+        </Route>
 
         {/* Cleaning */}
-        <Guarded roles={["manager", "admin", "cleaner"]}>
+        <Route element={<Guarded roles={["manager", "admin", "cleaner"]} />}>
           <Route path="/cleaning" element={<Cleaning />} />
           <Route path="/my-tasks" element={<MyTasks />} />
           <Route path="/table-queue" element={<TableQueue />} />
-        </Guarded>
+        </Route>
 
         {/* Security */}
-        <Guarded roles={["manager", "admin", "security"]}>
+        <Route element={<Guarded roles={["manager", "admin", "security"]} />}>
           <Route path="/visitors" element={<Visitors />} />
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/lost-found" element={<LostFound />} />
-        </Guarded>
+        </Route>
 
         {/* Maintenance is raised by anyone on the floor, resolved by a manager. */}
-        <Guarded roles={["manager", "admin", "kitchen", "waiter", "inventory", "cleaner", "security"]}>
+        <Route element={<Guarded roles={["manager", "admin", "kitchen", "waiter", "inventory", "cleaner", "security"]} />}>
           <Route path="/maintenance" element={<Maintenance />} />
-        </Guarded>
+        </Route>
 
         {/* Administration and reporting */}
-        <Guarded roles={["manager", "admin"]}>
+        <Route element={<Guarded roles={["manager", "admin"]} />}>
           <Route path="/employees" element={<Employees />} />
           <Route path="/users" element={<Users />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/activity-log" element={<ActivityLog />} />
           <Route path="/settings" element={<Settings />} />
-        </Guarded>
+        </Route>
 
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<PageNotFound />} />
@@ -123,10 +123,10 @@ const Shell = () => {
 
 /* Nav is filtered per role, but a hand-typed URL was not. This turns any route
    the active role cannot reach into a redirect home rather than a data leak. */
-function Guarded({ roles, children }) {
+function Guarded({ roles }) {
   const { role } = useRole();
   if (!roles.includes(role)) return <Navigate to={homeFor(role)} replace />;
-  return children;
+  return <Outlet />;
 }
 
 function HomeRedirect() {

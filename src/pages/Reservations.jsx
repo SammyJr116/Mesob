@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import { useData } from "@/lib/DataContext";
 import { notifySuccess } from "@/lib/notify";
 import { nextId, isoDate, clockTime, toDate } from "@/lib/datetime";
+import { MesobIcon } from "@/components/HabeshaDecorations";
 import { cn } from "@/lib/utils";
 
 export default function Reservations() {
@@ -37,6 +38,34 @@ export default function Reservations() {
         subtitle={`Fixed duration ${restaurant.reservationDuration} min · no-show grace ${restaurant.noShowGrace} min · reminder ${restaurant.reminderLead} min before. Tables with an active reservation block walk-ins.`}
         actions={<button onClick={() => setShowAdd(true)} className="btn-primary"><Plus className="h-4 w-4" /> New reservation</button>}
       />
+
+      {/* Habesha Hospitality Banner */}
+      <div className="relative mb-5 overflow-hidden rounded-2xl border border-gold-200/70 bg-gradient-to-r from-cream-100 via-white to-gold-50/60 p-4 shadow-sm">
+        <div className="tibeb-border-top" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-100 text-gold-700 ring-1 ring-gold-300">
+              <MesobIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display text-base font-bold text-foreground">
+                  እንኳን ደህና መጡ · Habesha Hospitality
+                </h3>
+                <span className="rounded-full bg-forest-100 px-2 py-0.5 text-[11px] font-semibold text-forest-800">
+                  ማዕድ ማጋራት
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                "Come as a guest, leave as family." Traditional woven Mesob tables accommodate shared Beyaynetu platters and cultural celebrations.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-gold-800 bg-gold-100/70 px-3 py-1.5 rounded-lg border border-gold-200">
+            <span>☕ Buna Ceremony Ready</span>
+          </div>
+        </div>
+      </div>
 
       <div className="mb-4 flex flex-wrap gap-3 text-sm">
         <span className="rounded-lg bg-secondary px-3 py-1.5">Today: {today.length}</span>

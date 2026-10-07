@@ -9,6 +9,7 @@ import {
 import { useRole } from "@/lib/RoleContext";
 import { useData } from "@/lib/DataContext";
 import CommandPalette from "@/components/CommandPalette";
+import { MesobIcon } from "@/components/HabeshaDecorations";
 import { cn } from "@/lib/utils";
 
 const NAV_BY_ROLE = {
@@ -124,19 +125,21 @@ export default function Layout({ children }) {
   };
 
   const SidebarContent = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="relative flex h-10 w-10 items-center justify-center rounded-t-full rounded-b-lg bg-gradient-to-b from-gold/25 to-sidebar-accent ring-1 ring-sidebar-border">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gold text-walnut-900 shadow-gold">
-            <Soup className="h-4 w-4" />
-          </div>
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border/80">
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-gold/30 via-forest/40 to-walnut-900 ring-1 ring-gold/40 shadow-sm">
+          <MesobIcon className="h-5 w-5 text-gold-400" />
         </div>
-        <div className="leading-tight">
-          <p className="font-display text-base font-semibold text-sidebar-accent-foreground">{restaurant.name}</p>
-          <p className="text-2xs text-sidebar-foreground/55">{restaurant.tagline}</p>
+        <div className="leading-tight min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="font-display text-base font-bold text-sidebar-accent-foreground tracking-tight truncate">{restaurant.name}</p>
+            <span className="text-2xs font-semibold text-gold-400 font-display">መሶብ</span>
+          </div>
+          <p className="text-2xs text-sidebar-foreground/60 truncate">Authentic Ethiopian Dining</p>
         </div>
       </div>
-      <nav aria-label="Primary" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
+      <div className="tibeb-strip opacity-70" />
+      <nav aria-label="Primary" className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {nav.map((item, i) => {
           if (item.group) {
             return (
@@ -177,6 +180,10 @@ export default function Layout({ children }) {
     </div>
   );
 
+  const readyTickets = (db.orders || []).flatMap((o) =>
+    (o.tickets || []).filter((t) => t.status === "Ready").map((t) => ({ order: o, ticket: t }))
+  );
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
@@ -208,19 +215,22 @@ export default function Layout({ children }) {
             </button>
           )}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{restaurant.name}</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{crumbLabel()}</span>
+            <span className="font-semibold text-foreground flex items-center gap-1.5">
+              <MesobIcon className="h-4 w-4 text-gold-600" />
+              <span>{restaurant.name}</span>
+            </span>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+            <span className="hidden sm:inline font-medium text-foreground/85">{crumbLabel()}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button
               aria-label="Search (Ctrl+K)"
               aria-keyshortcuts="Control+K"
               onClick={() => setPaletteOpen(true)}
-              className="hidden items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary sm:flex"
+              className="hidden items-center gap-2 rounded-lg border border-border/80 bg-card px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground shadow-sm transition sm:flex"
             >
-              <Search aria-hidden="true" className="h-4 w-4" />
-              <span>Search</span>
+              <Search aria-hidden="true" className="h-4 w-4 text-gold-600" />
+              <span>Search menu, orders…</span>
               <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 text-2xs font-medium">Ctrl K</kbd>
             </button>
             <button aria-label="Search" onClick={() => setPaletteOpen(true)} className="rounded-lg p-2 hover:bg-secondary sm:hidden">
@@ -229,7 +239,7 @@ export default function Layout({ children }) {
             <button aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} onClick={() => navigate("/notifications")} className="relative rounded-lg p-2 hover:bg-secondary">
               <Bell className="h-5 w-5" />
               {unread > 0 && (
-                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-berbere-500 px-1 text-2xs font-bold text-white">{unread}</span>
+                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-berbere-500 px-1 text-2xs font-bold text-white shadow-sm">{unread}</span>
               )}
             </button>
             <button aria-label="Your profile" onClick={() => navigate("/profile")} className="rounded-lg p-2 hover:bg-secondary">
@@ -242,6 +252,27 @@ export default function Layout({ children }) {
             )}
           </div>
         </header>
+
+        {readyTickets.length > 0 && (role === "waiter" || role === "manager") && (
+          <div className="bg-forest-700 text-cream px-4 py-2.5 sm:px-6 shadow-md border-b border-gold-400/30 flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5 text-sm font-medium">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gold-400"></span>
+              </span>
+              <span>
+                <strong className="text-gold-300 font-semibold font-display">ማዕድ ዝግጁ ነው · {readyTickets.length} {readyTickets.length === 1 ? "order is" : "orders are"} ready to serve:</strong>{" "}
+                <span className="text-cream/90">{readyTickets.map((r) => `${r.order.table ? `Table ${r.order.table}` : "Takeaway"} (${r.order.number}-${r.ticket.round})`).join(", ")}</span>
+              </span>
+            </div>
+            <button
+              onClick={() => navigate(readyTickets[0].order.table ? "/tables" : `/orders/${readyTickets[0].order.id}`)}
+              className="rounded-lg bg-gold text-walnut-950 px-3.5 py-1 text-xs font-bold shadow hover:brightness-110 transition flex items-center gap-1"
+            >
+              <span>View & Serve</span> →
+            </button>
+          </div>
+        )}
 
         <main className={cn("flex-1", isPhoneRole ? "pb-20" : "pb-12")}>
           {/* Phone-role layouts stay narrow only on small screens; the cap is a

@@ -57,6 +57,20 @@ export default function OrderDetail() {
     });
   };
 
+  const markTicketServed = (round) => {
+    updateItem("orders", order.id, (o) => {
+      const nextTickets = o.tickets.map((t) => (t.round === round ? { ...t, status: "Served" } : t));
+      const allServed = nextTickets.every((t) => t.status === "Served" || t.status === "Rejected");
+      return {
+        ...o,
+        tickets: nextTickets,
+        status: allServed ? "Served" : o.status,
+      };
+    });
+    logAction("Served ticket", order.id, "Ready", "Served", `Round ${round} served`);
+    notifySuccess(`Ticket ${order.number}-${round} served`, `Delivered to ${order.table ? `Table ${order.table}` : "customer"}`);
+  };
+
   return (
     <div>
       <Link to="/orders" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
@@ -75,7 +89,19 @@ export default function OrderDetail() {
             <SectionCard
               key={t.round}
               title={`Ticket ${order.number}-${t.round}`}
-              action={<StatusBadge status={t.status} />}
+              action={
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={t.status} />
+                  {t.status === "Ready" && (
+                    <button
+                      onClick={() => markTicketServed(t.round)}
+                      className="btn-primary text-xs bg-sage-600 hover:brightness-105"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Mark served
+                    </button>
+                  )}
+                </div>
+              }
             >
               <div className="space-y-2">
                 {t.items.map((it, i) => (
@@ -320,9 +346,10 @@ function PaymentModal({ bill, methods, onClose, onConfirm }) {
 
 function BillPreview({ order, bill, restaurant, onClose }) {
   return (
-    <Modal title="Bill preview" description={`${order.id} · no invoice number until payment`} size="md" onClose={onClose} footer={<button type="button" onClick={onClose} className="btn-outline">Close</button>}>
+    <Modal title="ደረሰኝ · Bill Preview" description={`${order.id} · no invoice number until payment`} size="md" onClose={onClose} footer={<button type="button" onClick={onClose} className="btn-outline">Close</button>}>
+      <div className="tibeb-border-top -mt-2 mb-3" />
       <div className="mb-3 text-center">
-        <p className="font-display text-xl font-semibold">{restaurant.name}</p>
+        <p className="font-display text-xl font-semibold text-primary">{restaurant.name}</p>
         <p className="text-xs text-muted-foreground">{restaurant.address} · {restaurant.phone}</p>
         <p className="text-xs text-muted-foreground">TIN: {restaurant.tin}</p>
       </div>

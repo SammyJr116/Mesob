@@ -102,7 +102,7 @@ export default function Employees() {
   return (
     <div>
       <PageHeader
-        title="Employees"
+        title="ሰራተኞች · Staff & Team"
         subtitle="Only the Manager manages employees. An employee can exist without a user account. Onboarding is two steps: Manager creates employee, Administrator creates the login."
         actions={
           <>

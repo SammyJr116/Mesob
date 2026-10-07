@@ -60,7 +60,7 @@ export default function Expenses() {
   return (
     <div>
       <PageHeader
-        title="Expenses"
+        title="ወጪዎች · Expenses"
         subtitle="Manager and Inventory Staff record. Inventory Staff see only their own. Only Confirmed entries appear in reports."
         actions={<button onClick={() => setShowAdd(true)} className="btn-primary"><Plus className="h-4 w-4" /> New expense</button>}
       />

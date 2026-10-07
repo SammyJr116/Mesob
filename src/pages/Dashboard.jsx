@@ -9,6 +9,7 @@ import { StatCard, SectionCard, StatusBadge, EmptyState } from "@/components/ui/
 import { useData } from "@/lib/DataContext";
 import { etb, calcBill } from "@/lib/format";
 import { businessDate, minutesSince } from "@/lib/datetime";
+import { MesobIcon } from "@/components/HabeshaDecorations";
 import { cn } from "@/lib/utils";
 
 const HERO = "/images/dashboard-hero.png";
@@ -129,20 +130,33 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="relative mb-6 overflow-hidden rounded-2xl border border-border shadow-warm">
+      <div className="relative mb-6 overflow-hidden rounded-2xl border border-border shadow-warm tibeb-border-top">
         <div className="absolute inset-0">
-          <img src={HERO} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-walnut/90 via-walnut/70 to-walnut/30" />
+          <img src={HERO} alt="Ethiopian dining hero" className="h-full w-full object-cover brightness-95" />
+          <div className="absolute inset-0 bg-gradient-to-r from-walnut-950/95 via-walnut-900/80 to-walnut-900/40" />
         </div>
-        <div className="relative flex flex-col gap-1 px-6 py-7 sm:px-8 sm:py-9">
-          <p className="text-xs font-semibold uppercase tracking-brand text-gold">{restaurant.name} · Today</p>
-          <h1 className="font-display text-2xl font-semibold text-cream sm:text-3xl">Today at a glance</h1>
-          <p className="text-sm text-cream/80">
-            Business day {today} · Open until {restaurant.closingTime} · All figures for the current business day
+        <div className="relative flex flex-col gap-2 px-6 py-7 sm:px-8 sm:py-9">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 border border-gold/40 px-3 py-0.5 text-2xs font-bold text-gold uppercase tracking-wider backdrop-blur-sm">
+              <MesobIcon className="h-3 w-3 text-gold-300" /> መሶብ · {restaurant.name}
+            </span>
+            <span className="text-cream/60 text-xs">·</span>
+            <span className="text-xs text-cream/80 font-medium">Bole Road, Addis Ababa</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-cream sm:text-3xl tracking-tight">
+            Taste the Soul of Ethiopia · Today's Dining Service
+          </h1>
+          <p className="text-sm text-cream/85 max-w-2xl leading-relaxed">
+            <em>"Food shared from one Mesob brings hearts together."</em> · Business day {today} · Open until {restaurant.closingTime}
           </p>
-          <button onClick={() => navigate("/reports")} className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-walnut shadow-gold transition hover:brightness-105">
-            <TrendingUp className="h-4 w-4" /> End-of-day summary
-          </button>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <button onClick={() => navigate("/reports")} className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-walnut-950 shadow-gold transition hover:brightness-105">
+              <TrendingUp className="h-4 w-4" /> End-of-day summary
+            </button>
+            <button onClick={() => navigate("/kitchen")} className="inline-flex items-center gap-2 rounded-lg bg-card/25 border border-cream/20 px-3.5 py-2 text-sm font-medium text-cream backdrop-blur-sm transition hover:bg-card/40">
+              <ChefHat className="h-4 w-4 text-gold-300" /> Kitchen queue ({figures.preparing} preparing)
+            </button>
+          </div>
         </div>
       </div>
 
@@ -153,7 +167,7 @@ export default function Dashboard() {
           value={etb(figures.netSales)}
           sub={`${figures.paidCount} paid order${figures.paidCount === 1 ? "" : "s"} · tax ${etb(figures.tax)}`}
           icon={TrendingUp}
-          tone="sage"
+          tone="forest"
           onClick={() => navigate("/reports")}
         />
         <StatCard label="Tickets preparing" value={figures.preparing} sub={`${figures.ready} ready`} icon={ChefHat} tone="berbere" onClick={() => navigate("/kitchen")} />

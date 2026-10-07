@@ -144,6 +144,55 @@
   .bloom-sage {
     background-image: radial-gradient(closest-side, hsl(102 18% 46% / 0.18), transparent);
   }
+
+  /* Authentic Habesha Tibeb (ጥበብ) decorative woven ribbon:
+     Repeated geometric diamond motifs in Gold, Forest Green, and Berbere */
+  .tibeb-strip {
+    height: 6px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='6' viewBox='0 0 36 6'%3E%3Cpolygon points='0,3 3,0 6,3 3,6' fill='%23C99A5C'/%3E%3Cpolygon points='9,3 12,0 15,3 12,6' fill='%231C3B2B'/%3E%3Cpolygon points='18,3 21,0 24,3 21,6' fill='%23C99A5C'/%3E%3Cpolygon points='27,3 30,0 33,3 30,6' fill='%238C2F26'/%3E%3Cline x1='0' y1='3' x2='36' y2='3' stroke='%23C99A5C' stroke-width='0.5' stroke-opacity='0.3'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+  }
+
+  .tibeb-border-top {
+    position: relative;
+  }
+  .tibeb-border-top::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='4' viewBox='0 0 36 4'%3E%3Cpolygon points='0,2 2,0 4,2 2,4' fill='%23C99A5C'/%3E%3Cpolygon points='9,2 11,0 13,2 11,4' fill='%231C3B2B'/%3E%3Cpolygon points='18,2 20,0 22,2 20,4' fill='%23C99A5C'/%3E%3Cpolygon points='27,2 29,0 31,2 29,4' fill='%238C2F26'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
+  /* Cultural divider with centered geometric motif */
+  .habesha-rule {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+  }
+  .habesha-rule::before,
+  .habesha-rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(34 45% 57% / 0.45), transparent);
+  }
+
+  /* Mesob warm ambient card hover */
+  .mesob-card-hover {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mesob-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -10px rgba(74, 50, 34, 0.2), 0 2px 6px -2px rgba(74, 50, 34, 0.08);
+  }
 }
 
 /* subtle warm scrollbar */

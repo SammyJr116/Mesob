@@ -7,6 +7,7 @@ import { useRole } from "@/lib/RoleContext";
 import { isPrivileged } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { notifySuccess } from "@/lib/notify";
+import { MesobIcon } from "@/components/HabeshaDecorations";
 
 const STATUS_TONE = {
   Available: "border-sage-300 bg-sage-50",
@@ -64,11 +65,18 @@ export default function Tables() {
     notifySuccess(`${t.number} released without a cleaner sign-off`);
   };
 
+  const getTableReadyTickets = (table) => {
+    if (!table.order) return [];
+    const ord = db.orders.find((o) => o.id === table.order);
+    if (!ord) return [];
+    return (ord.tickets || []).filter((tk) => tk.status === "Ready");
+  };
+
   return (
     <div>
       <PageHeader
-        title="Tables"
-        subtitle="Grid grouped by section. Open an order on any Available table."
+        title="ጠረጴዛዎች · Dining Tables"
+        subtitle="Mesob communal dining layout grouped by floor section. Open an order on any Available table."
         actions={<button onClick={() => navigate("/orders/new")} className="btn-primary"><Plus className="h-4 w-4" /> New order</button>}
       />
 
@@ -93,54 +101,77 @@ export default function Tables() {
         <EmptyState title="No tables in this section" description="Pick another section, or add a table in Settings." icon={MapPin} />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {filtered.map((t) => (
-            <div
-              key={t.id}
-              className={cn("card-soft flex flex-col gap-2 p-4 text-left transition-all", STATUS_TONE[t.status])}
-            >
-              <div className="flex items-start justify-between">
-                <span className="font-display text-2xl font-semibold">{t.number}</span>
-                <StatusBadge status={t.status} />
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Users className="h-3.5 w-3.5" /> {t.seats} seats
-                <span className="text-border">·</span>
-                <MapPin className="h-3.5 w-3.5" /> {t.section}
-              </div>
-              {t.order && (
-                <div className="mt-1 rounded-lg bg-card/80 px-2 py-1.5 text-xs">
-                  <p className="font-medium">{t.order}</p>
-                  <p className="text-muted-foreground">Waiter: {t.waiter}</p>
-                </div>
-              )}
-              {t.reservation && (
-                <div className="mt-1 rounded-lg bg-card/80 px-2 py-1.5 text-xs">
-                  <p className="font-medium">{t.reservation}</p>
-                  <p className="text-muted-foreground">Reserved today</p>
-                </div>
-              )}
-              <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-                {t.status === "Available" && (
-                  <button onClick={() => open(t)} className="text-xs font-medium text-primary">Open order →</button>
+          {filtered.map((t) => {
+            const readyTickets = getTableReadyTickets(t);
+            const isFoodReady = readyTickets.length > 0;
+            return (
+              <div
+                key={t.id}
+                className={cn(
+                  "card-soft flex flex-col gap-2 p-4 text-left transition-all",
+                  isFoodReady ? "border-sage-500 ring-2 ring-sage-400 bg-sage-50/90 shadow-md" : STATUS_TONE[t.status]
                 )}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <MesobIcon className="h-4 w-4 text-gold-600/70 shrink-0" />
+                    <span className="font-display text-2xl font-semibold">{t.number}</span>
+                  </div>
+                  <StatusBadge status={t.status} />
+                </div>
+                {isFoodReady && (
+                  <div className="flex items-center gap-1.5 rounded-md bg-sage-600 px-2 py-1 text-xs font-semibold text-white shadow-sm animate-pulse">
+                    <span>🍽️ Food Ready ({readyTickets.length})</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" /> {t.seats} seats
+                  <span className="text-border">·</span>
+                  <MapPin className="h-3.5 w-3.5" /> {t.section}
+                </div>
                 {t.order && (
-                  <button onClick={() => open(t)} className="text-xs font-medium text-primary">View {t.order} →</button>
+                  <div className="mt-1 rounded-lg bg-card/80 px-2 py-1.5 text-xs">
+                    <p className="font-medium">{t.order}</p>
+                    <p className="text-muted-foreground">Waiter: {t.waiter}</p>
+                  </div>
                 )}
-                {t.status === "Cleaning" && (
-                  <button onClick={() => navigate("/my-tasks")} className="text-xs font-medium text-primary">Cleaning queue →</button>
+                {t.reservation && (
+                  <div className="mt-1 rounded-lg bg-card/80 px-2 py-1.5 text-xs">
+                    <p className="font-medium">{t.reservation}</p>
+                    <p className="text-muted-foreground">Reserved today</p>
+                  </div>
                 )}
-                {manager && t.status === "Cleaning" && (
-                  <button onClick={() => overrideCleaning(t)} className="text-xs text-muted-foreground hover:text-foreground">Override cleaning</button>
-                )}
-                {manager && t.status !== "Out of Service" && t.status !== "Cleaning" && (
-                  <button onClick={() => takeOutOfService(t)} className="text-xs text-muted-foreground hover:text-foreground">Take out of service</button>
-                )}
-                {manager && t.status === "Out of Service" && (
-                  <button onClick={() => returnToService(t)} className="text-xs text-muted-foreground hover:text-foreground">Return to service</button>
-                )}
+                <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+                  {isFoodReady && (
+                    <button
+                      onClick={() => navigate(`/orders/${t.order}`)}
+                      className="btn-primary w-full text-xs bg-sage-600 hover:brightness-105"
+                    >
+                      Serve Food →
+                    </button>
+                  )}
+                  {t.status === "Available" && (
+                    <button onClick={() => open(t)} className="text-xs font-medium text-primary">Open order →</button>
+                  )}
+                  {t.order && !isFoodReady && (
+                    <button onClick={() => open(t)} className="text-xs font-medium text-primary">View {t.order} →</button>
+                  )}
+                  {t.status === "Cleaning" && (
+                    <button onClick={() => navigate("/my-tasks")} className="text-xs font-medium text-primary">Cleaning queue →</button>
+                  )}
+                  {manager && t.status === "Cleaning" && (
+                    <button onClick={() => overrideCleaning(t)} className="text-xs text-muted-foreground hover:text-foreground">Override cleaning</button>
+                  )}
+                  {manager && t.status !== "Out of Service" && t.status !== "Cleaning" && (
+                    <button onClick={() => takeOutOfService(t)} className="text-xs text-muted-foreground hover:text-foreground">Take out of service</button>
+                  )}
+                  {manager && t.status === "Out of Service" && (
+                    <button onClick={() => returnToService(t)} className="text-xs text-muted-foreground hover:text-foreground">Return to service</button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

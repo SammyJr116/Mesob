@@ -54,7 +54,7 @@ export default function Cleaning() {
   return (
     <div>
       <PageHeader
-        title="Cleaning"
+        title="ጽዳት · Cleaning & Hygiene"
         subtitle={manager ? "Table-clean tasks start unassigned in a shared queue. Every other task is assigned to a specific cleaner." : "Your assignments plus the shared table-clean queue."}
         actions={manager ? <button onClick={() => setShowTask(true)} className="btn-primary"><Plus className="h-4 w-4" /> New task</button> : null}
       />

@@ -67,7 +67,7 @@ export default function Purchases() {
   return (
     <div>
       <PageHeader
-        title="Purchases"
+        title="ግዢዎች · Purchases & Sourcing"
         subtitle="Manager approves every request — no auto-approval. Emergency purchases add stock immediately and are flagged for review."
         actions={<button onClick={() => setCreating(true)} className="btn-primary"><Plus className="h-4 w-4" /> New request</button>}
       />
