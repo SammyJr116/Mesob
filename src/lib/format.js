@@ -44,3 +44,28 @@ export function calcBill(order, config) {
   const netSales = round2(taxableAmount - taxPortion);
   return { lines, itemSubtotal, serviceCharge, discount, totalPayable, taxableAmount, taxPortion, netSales };
 }
+
+/**
+ * PRD 11.7.3 & 11.7.4: Proportional calculation for credit notes.
+ * @param {{ itemSubtotal: number, serviceCharge: number, totalPayable: number }} bill
+ * @param {number} creditedItemAmount
+ * @param {boolean} creditServiceCharge
+ * @param {number} [taxRatePercent=15]
+ */
+export function calcCreditNote(bill, creditedItemAmount, creditServiceCharge, taxRatePercent = 15) {
+  const taxRate = (taxRatePercent || 0) / 100;
+  const itemAmt = round2(Math.min(creditedItemAmount, bill.itemSubtotal || 0));
+  const taxReversed = round2((itemAmt * taxRate) / (1 + taxRate));
+  const netSalesDeduction = round2(itemAmt - taxReversed);
+  const serviceDeduction = creditServiceCharge && bill.itemSubtotal > 0
+    ? round2((bill.serviceCharge * itemAmt) / bill.itemSubtotal)
+    : 0;
+  const totalRefund = round2(itemAmt + serviceDeduction);
+  return {
+    creditedItemAmount: itemAmt,
+    taxReversed,
+    netSalesDeduction,
+    serviceDeduction,
+    totalRefund,
+  };
+}

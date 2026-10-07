@@ -21,7 +21,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 1.1 Invoicing, Credit Notes & Tax Breakdown
 *Priority: P0 | Target: `src/pages/OrderDetail.jsx`, `src/lib/format.js`, `src/lib/mockData.js`*
 
-- [ ] **Task 1.1.1: Credit Note Data Structure & Math Helper**
+- [x] **Task 1.1.1: Credit Note Data Structure & Math Helper**
   - **Files**: [`src/lib/format.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/lib/format.js), [`src/lib/mockData.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/lib/mockData.js)
   - **Spec**: PRD 11.7.3 & 11.7.4. Add function `calcCreditNote(invoice, creditedItemAmount, creditServiceCharge, taxRate)`:
     - $\text{Tax Reversed} = \text{creditedItemAmount} \times \frac{\text{taxRate}}{1 + \text{taxRate}}$
@@ -31,7 +31,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
   - **Seed**: Add `creditNotes: []` array to `sampleData` in `mockData.js`.
   - **Done When**: Unit calculation tests in `format.js` match PRD 11.7.3 rounding to 2 decimal places.
 
-- [ ] **Task 1.1.2: Credit Note Issue Modal in `OrderDetail.jsx`**
+- [x] **Task 1.1.2: Credit Note Issue Modal in `OrderDetail.jsx`**
   - **Files**: [`src/pages/OrderDetail.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/OrderDetail.jsx)
   - **Spec**: PRD 11.7.1, 11.7.4. Gated to Manager only (`isManager`).
   - **UI Controls**:
@@ -45,7 +45,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
   - **Action**: Generates continuous id `CN-` with 6 digits (e.g. `CN-000001` using `nextId`), inserts record into `db.creditNotes`, logs to `db.activityLog` with action `"Issued credit note"`.
   - **Done When**: Issuing a credit note stores record in `db.creditNotes` and displays a `"Credit Note CN-000001"` badge and summary on the order detail page.
 
-- [ ] **Task 1.1.3: Buyer Tax Details in Checkout Modal**
+- [x] **Task 1.1.3: Buyer Tax Details in Checkout Modal**
   - **Files**: [`src/pages/OrderDetail.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/OrderDetail.jsx)
   - **Spec**: PRD 11.5.3, 11.6.1. Optional fields for commercial VAT receipts.
   - **UI Controls**: Inside `PaymentModal`:
@@ -54,7 +54,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
   - **Action**: Stored on `order.buyerName` and `order.buyerTin` upon invoice generation.
   - **Done When**: Entering buyer info at checkout displays buyer details in both `BillPreview` and `orderInfo`.
 
-- [ ] **Task 1.1.4: Printable Receipt & PDF Trigger**
+- [x] **Task 1.1.4: Printable Receipt & PDF Trigger**
   - **Files**: [`src/pages/OrderDetail.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/OrderDetail.jsx)
   - **Spec**: PRD 11.5.1, 22.1.3.
   - **UI Controls**: Add `"Print / Save Tax Invoice"` button in `BillPreview` footer that calls `window.print()` with `@media print` styling hiding sidebar/nav chrome.
@@ -134,7 +134,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - If day is closed, show `"Reopen Day"` button (reopens most recent day, logs to activity log).
   - **Done When**: Closing day increments active business date and archives snapshot summary.
 
-- [ ] **Task 1.4.2: Credit Notes Reflection in Reports**
+- [x] **Task 1.4.2: Credit Notes Reflection in Reports**
   - **Files**: [`src/pages/Reports.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Reports.jsx)
   - **Spec**: PRD 22.2.1, 22.6.2.
   - **Logic**: Net sales in reports = $\text{Item Subtotals} - \text{Discounts} - \text{Extracted Tax} - \text{Credit Notes Issued in Period}$.

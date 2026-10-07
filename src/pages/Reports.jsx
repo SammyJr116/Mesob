@@ -52,6 +52,14 @@ export default function Reports() {
     { net: 0, tax: 0, service: 0, discount: 0, total: 0 }
   );
 
+  const rangeCreditNotes = (db.creditNotes || []).filter((cn) => inRange(cn.issuedAt || cn.businessDate));
+  const creditNotesTotalRefund = rangeCreditNotes.reduce((s, cn) => s + (cn.totalRefund || 0), 0);
+  const creditNotesNetDeduction = rangeCreditNotes.reduce((s, cn) => s + (cn.netSalesDeduction || 0), 0);
+  const creditNotesTaxReversed = rangeCreditNotes.reduce((s, cn) => s + (cn.taxReversed || 0), 0);
+
+  const netSalesAdjusted = Math.max(0, rangeTotals.net - creditNotesNetDeduction);
+  const taxAdjusted = Math.max(0, rangeTotals.tax - creditNotesTaxReversed);
+
   const todayRows = report.orders.filter((o) => businessDayOfStamp(o.created) === businessDate());
 
   const exportCsv = () => {
@@ -128,9 +136,9 @@ export default function Reports() {
       {tab === "sales" && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Net sales (range)" value={etb(rangeTotals.net)} sub="ETB" tone="sage" icon={TrendingUp} />
-            <StatCard label="Tax collected" value={etb(rangeTotals.tax)} sub="ETB" tone="gold" />
-            <StatCard label="Service charge" value={etb(rangeTotals.service)} sub="ETB" icon={Receipt} tone="terracotta" />
+            <StatCard label="Net sales (range)" value={etb(netSalesAdjusted)} sub={creditNotesTotalRefund > 0 ? `After ${etb(creditNotesTotalRefund)} refunds` : "ETB"} tone="sage" icon={TrendingUp} />
+            <StatCard label="Tax collected" value={etb(taxAdjusted)} sub="ETB" tone="gold" />
+            <StatCard label="Credit notes" value={etb(creditNotesTotalRefund)} sub={`${rangeCreditNotes.length} issued`} tone="berbere" icon={Receipt} />
             <StatCard label="Orders" value={rows.length} sub={`${items.length} distinct items`} icon={BarChart3} />
           </div>
 
@@ -180,6 +188,23 @@ export default function Reports() {
               />
             </SectionCard>
           </div>
+
+          {rangeCreditNotes.length > 0 && (
+            <SectionCard title="Credit notes issued in range">
+              <DataTable
+                caption="Issued credit notes and refund amounts"
+                columns={[
+                  { key: "id", header: "Credit Note", render: (c) => <span className="font-semibold text-berbere-700">{c.id}</span> },
+                  { key: "orderId", header: "Order", render: (c) => c.orderId },
+                  { key: "refundMethod", header: "Method", render: (c) => c.refundMethod },
+                  { key: "reason", header: "Reason", render: (c) => <span className="text-muted-foreground">{c.reason}</span> },
+                  { key: "totalRefund", header: "Refund", align: "right", render: (c) => `−${etb(c.totalRefund)} ETB` },
+                ]}
+                rows={rangeCreditNotes}
+                empty="No credit notes issued in this range."
+              />
+            </SectionCard>
+          )}
         </div>
       )}
 

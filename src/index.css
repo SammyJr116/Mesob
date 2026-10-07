@@ -208,3 +208,31 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  [role="dialog"], [role="dialog"] * {
+    visibility: visible;
+  }
+  [role="dialog"] {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 24px !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+  }
+  header, aside, nav, button, .btn-primary, .btn-outline {
+    display: none !important;
+  }
+}

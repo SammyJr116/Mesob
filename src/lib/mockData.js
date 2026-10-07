@@ -118,6 +118,8 @@ export const orders = [
   },
 ];
 
+export const creditNotes = [];
+
 export const customers = [
   { id: "CU01", name: "Abebe G.", phone: "+251911223344", email: "abebe@example.com", orders: 12, lastVisit: "Today", notes: "Prefers window seat" },
   { id: "CU02", name: "Merone A.", phone: "+251912556677", email: "", orders: 4, lastVisit: "Today", notes: "Takeaway regular" },
