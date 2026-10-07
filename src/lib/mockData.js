@@ -26,7 +26,10 @@ export const restaurant = {
   orderDigits: 4,
   invoicePrefix: "INV-",
   creditNotePrefix: "CN-",
+  currentBusinessDate: "2026-10-07",
 };
+
+export const dayClosures = [];
 
 export const tables = [
   { id: "T01", number: "1", seats: 2, section: "Window", status: "Available", order: null, reservation: null },

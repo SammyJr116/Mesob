@@ -104,3 +104,27 @@ export function nextNumber(orders, config = defaultConfig) {
   const digits = config.orderDigits || 4;
   return nextId(orders, prefix, digits).replace(prefix, "");
 }
+
+/**
+ * PRD 7.6, 7.7: Meal period enforcement helper
+ * @param {{ mealPeriod?: string }} item
+ * @param {string} [currentTimeStr] Clock time in "HH:mm" format. Defaults to current clock.
+ * @returns {boolean}
+ */
+export function isItemInMealPeriod(item, currentTimeStr) {
+  if (!item?.mealPeriod || item.mealPeriod === "All day") return true;
+  const time = currentTimeStr || clockTime();
+  if (item.mealPeriod === "Breakfast") {
+    // 06:00 to 11:00
+    return time >= "06:00" && time <= "11:00";
+  }
+  if (item.mealPeriod === "Lunch") {
+    // 11:30 to 15:30
+    return time >= "11:30" && time <= "15:30";
+  }
+  if (item.mealPeriod === "Dinner") {
+    // 17:00 to 22:30
+    return time >= "17:00" && time <= "22:30";
+  }
+  return true;
+}

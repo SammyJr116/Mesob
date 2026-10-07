@@ -1,23 +1,28 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Pencil, Upload, Trash2, ChefHat, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Upload, Trash2, ChefHat, AlertTriangle, Download } from "lucide-react";
 import { StatusBadge, SearchInput, EmptyState } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
 import DataTable from "@/components/ui/DataTable";
 import { useData } from "@/lib/DataContext";
+import { useRole } from "@/lib/RoleContext";
+import { isPrivileged } from "@/lib/roles";
 import { etb } from "@/lib/format";
 import { nextId } from "@/lib/datetime";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { MesobIcon, JebenaIcon } from "@/components/HabeshaDecorations";
-import { cn } from "@/lib/utils";
+import { cn, downloadCsv } from "@/lib/utils";
 
 const MEAL_PERIODS = ["All day", "Breakfast", "Lunch", "Dinner"];
 
 export default function Menu() {
   const { db, insertItem, updateItem, removeItem } = useData();
+  const { role } = useRole();
+  const isManager = isPrivileged(role);
   const { menuItems, menuCategories, recipes } = db;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
   const [editing, setEditing] = useState(null);
+  const [showCsvImport, setShowCsvImport] = useState(false);
   const [view, setView] = useState("cards");
 
   const filtered = useMemo(
@@ -130,10 +135,13 @@ export default function Menu() {
             <p className="mt-1 max-w-md text-sm text-cream/70">Tax-inclusive prices. Fasting tag on every item. Variants scale the recipe; add-ons only add ingredients.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-cream/20 px-4 py-2 text-sm font-semibold text-cream transition hover:bg-cream/10">
+            <button
+              type="button"
+              onClick={() => setShowCsvImport(true)}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-cream/20 px-4 py-2 text-sm font-semibold text-cream transition hover:bg-cream/10"
+            >
               <Upload className="h-4 w-4" /> Import CSV
-              <input type="file" accept=".csv,text/csv" onChange={importCsv} className="sr-only" />
-            </label>
+            </button>
             <button onClick={openNew} className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-walnut shadow-gold transition hover:brightness-105">
               <Plus className="h-4 w-4" /> New item
             </button>
@@ -281,6 +289,11 @@ export default function Menu() {
                     ) : (
                       <span className="rounded-md bg-gold-50 border border-gold-200 px-2 py-0.5 font-medium text-gold-700">No recipe</span>
                     )}
+                    {m.scheduledPrices?.length > 0 && (
+                      <span className="rounded-md bg-gold-100 dark:bg-gold-950/60 border border-gold-300 text-gold-800 dark:text-gold-300 px-2 py-0.5 font-medium">
+                        Upcoming price ({m.scheduledPrices.length})
+                      </span>
+                    )}
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
@@ -301,7 +314,41 @@ export default function Menu() {
         </div>
       )}
 
-      {editing && <ItemModal draft={editing.draft} categories={menuCategories} hasRecipe={!!recipes[editing.draft.id]} onClose={() => setEditing(null)} onSave={save} />}
+      {editing && (
+        <ItemModal
+          draft={editing.draft}
+          categories={menuCategories}
+          hasRecipe={!!recipes[editing.draft.id]}
+          isManager={isManager}
+          onClose={() => setEditing(null)}
+          onSave={save}
+        />
+      )}
+
+      {showCsvImport && (
+        <MenuCsvImportModal
+          menuItems={menuItems}
+          menuCategories={menuCategories}
+          onClose={() => setShowCsvImport(false)}
+          onImport={(itemsToImport) => {
+            itemsToImport.forEach((it) => {
+              insertItem("menuItems", {
+                ...blankItem(menuCategories, menuItems, it.name),
+                id: nextId(menuItems, "M"),
+                name: it.name,
+                category: it.category,
+                price: it.price,
+                fasting: it.fasting,
+                mealPeriod: it.mealPeriod,
+                availability: it.availability,
+                status: "Draft",
+              });
+            });
+            notifySuccess(`Imported ${itemsToImport.length} menu items as Draft`);
+            setShowCsvImport(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -320,18 +367,45 @@ function blankItem(categories, items, name = "") {
     variants: [],
     addons: [],
     hasRecipe: false,
+    scheduledPrices: [],
   };
 }
 
-function ItemModal({ draft, categories, hasRecipe, onClose, onSave }) {
+function ItemModal({ draft, categories, hasRecipe, isManager, onClose, onSave }) {
   const [item, setItem] = useState(draft);
+  const [newSchedPrice, setNewSchedPrice] = useState("");
+  const [newSchedDate, setNewSchedDate] = useState("");
   const set = (patch) => setItem((prev) => ({ ...prev, ...patch }));
   const missingRecipe = item.status === "Active" && !item.hasRecipe && !hasRecipe;
+
+  const tomorrowStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const handleAddScheduledPrice = () => {
+    const p = Number(newSchedPrice);
+    if (!Number.isFinite(p) || p <= 0 || !newSchedDate) return;
+    const existing = item.scheduledPrices || [];
+    set({
+      scheduledPrices: [...existing, { price: p, effectiveDate: newSchedDate }],
+    });
+    setNewSchedPrice("");
+    setNewSchedDate("");
+  };
+
+  const handleRemoveScheduledPrice = (idx) => {
+    set({
+      scheduledPrices: (item.scheduledPrices || []).filter((_, i) => i !== idx),
+    });
+  };
 
   return (
     <Modal
       title={hasRecipe || item.id ? `Edit ${item.name || "item"}` : "New menu item"}
       description="Tax-inclusive prices. Variants, add-ons and the recipe are managed on the Recipes screen."
+      size="md"
       onClose={onClose}
       onSubmit={(e) => {
         e.preventDefault();
@@ -385,6 +459,67 @@ function ItemModal({ draft, categories, hasRecipe, onClose, onSave }) {
         <Field label="Image path (local file)">
           <input value={item.image || ""} onChange={(e) => set({ image: e.target.value })} placeholder="/images/menu/doro-wot.svg" />
         </Field>
+
+        {isManager && (
+          <div className="sm:col-span-2 mt-2 rounded-xl border border-border bg-secondary/30 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-foreground">Scheduled Price Changes (PRD 7.8)</span>
+              <span className="text-[11px] text-muted-foreground">Manager only</span>
+            </div>
+            {(item.scheduledPrices || []).length > 0 ? (
+              <div className="space-y-1.5 mb-3">
+                {item.scheduledPrices.map((sp, idx) => (
+                  <div key={idx} className="flex items-center justify-between rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs">
+                    <span>
+                      <strong>{etb(sp.price)} ETB</strong> · Effective: <span className="font-medium text-foreground">{sp.effectiveDate}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveScheduledPrice(idx)}
+                      className="text-berbere-600 hover:text-berbere-700 text-xs font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mb-3">No future price changes scheduled.</p>
+            )}
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[120px]">
+                <label className="text-[11px] text-muted-foreground block mb-1">New Price (ETB)</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newSchedPrice}
+                  onChange={(e) => setNewSchedPrice(e.target.value)}
+                  className="input-soft text-xs"
+                />
+              </div>
+              <div className="flex-1 min-w-[130px]">
+                <label className="text-[11px] text-muted-foreground block mb-1">Effective Date</label>
+                <input
+                  type="date"
+                  min={tomorrowStr()}
+                  value={newSchedDate}
+                  onChange={(e) => setNewSchedDate(e.target.value)}
+                  className="input-soft text-xs"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!newSchedPrice || !newSchedDate}
+                onClick={handleAddScheduledPrice}
+                className="btn-outline text-xs h-9 px-3"
+              >
+                Schedule
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {missingRecipe && (
         <p role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-berbere-100 px-3 py-2 text-xs text-berbere-600">
@@ -405,5 +540,182 @@ function Field({ label, children }) {
       <span className="mb-1 block text-sm font-medium">{label}</span>
       {React.cloneElement(children, { className: "input-soft" })}
     </label>
+  );
+}
+
+function MenuCsvImportModal({ menuItems, menuCategories, onClose, onImport }) {
+  const [parsedRows, setParsedRows] = useState([]);
+  const [errorHeader, setErrorHeader] = useState("");
+
+  const downloadTemplate = () => {
+    const csvContent =
+      "name,category,price,fasting,meal_period,availability\n" +
+      "Gomen Besiga,Main Dishes,420,Non-fasting,All day,Available\n" +
+      "Atkilt Wot,Main Dishes,280,Fasting,All day,Available\n" +
+      "Habesha Special Coffee,Coffee,75,Fasting,All day,Available\n";
+    downloadCsv("menu_items_template.csv", csvContent);
+  };
+
+  const handleFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setErrorHeader("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || "");
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        setErrorHeader("CSV must contain a header row and at least one data row.");
+        setParsedRows([]);
+        return;
+      }
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const nameIdx = headers.indexOf("name");
+      const priceIdx = headers.indexOf("price");
+      const catIdx = headers.indexOf("category");
+      const fastingIdx = headers.indexOf("fasting");
+      const mealIdx = headers.indexOf("meal_period");
+      const availIdx = headers.indexOf("availability");
+
+      if (nameIdx === -1 || priceIdx === -1) {
+        setErrorHeader("Missing required header columns: 'name' and 'price' are required.");
+        setParsedRows([]);
+        return;
+      }
+
+      const rows = [];
+      const seenNames = new Set(menuItems.map((m) => m.name.toLowerCase()));
+
+      lines.slice(1).forEach((line, i) => {
+        const lineNum = i + 2;
+        const cells = line.split(",").map((c) => c.trim());
+        const name = cells[nameIdx] || "";
+        const priceStr = cells[priceIdx] || "";
+        const price = Number(priceStr);
+        const category = (catIdx >= 0 && cells[catIdx]) || menuCategories[0]?.name || "Main Dishes";
+        const fasting = (fastingIdx >= 0 && cells[fastingIdx]) || "Non-fasting";
+        const mealPeriod = (mealIdx >= 0 && cells[mealIdx]) || "All day";
+        const availability = (availIdx >= 0 && cells[availIdx]) || "Available";
+
+        let error = "";
+        if (!name) error = "Missing name";
+        else if (seenNames.has(name.toLowerCase())) error = "Duplicate item name";
+        else if (!priceStr || !Number.isFinite(price) || price <= 0) error = `Invalid price (${priceStr || "empty"})`;
+
+        if (!error) {
+          seenNames.add(name.toLowerCase());
+        }
+
+        rows.push({
+          lineNum,
+          name,
+          category,
+          price: Number.isFinite(price) ? price : 0,
+          fasting,
+          mealPeriod,
+          availability,
+          error,
+        });
+      });
+
+      setParsedRows(rows);
+    };
+    reader.readAsText(f);
+  };
+
+  const validRows = parsedRows.filter((r) => !r.error);
+
+  return (
+    <Modal
+      title="Import Menu Items CSV"
+      description="Upload a CSV file to add multiple items at once (PRD 23.9)."
+      size="lg"
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!validRows.length) return;
+        onImport(validRows);
+      }}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-outline">Cancel</button>
+          <button type="submit" disabled={!validRows.length} className="btn-primary">
+            Import {validRows.length} valid item{validRows.length === 1 ? "" : "s"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4 text-xs">
+        <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
+          <div>
+            <p className="font-semibold text-foreground text-sm">Need the CSV format?</p>
+            <p className="text-muted-foreground text-xs">Download our standardized template with sample items.</p>
+          </div>
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="btn-outline text-xs whitespace-nowrap"
+          >
+            <Download className="h-3.5 w-3.5 mr-1 inline" /> Download template
+          </button>
+        </div>
+
+        <div>
+          <label className="mb-1 block font-medium text-foreground">Select CSV File</label>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFileChange}
+            className="input-soft file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:cursor-pointer"
+          />
+        </div>
+
+        {errorHeader && (
+          <div className="rounded-lg bg-berbere-100 p-2.5 text-berbere-700 font-medium">
+            {errorHeader}
+          </div>
+        )}
+
+        {parsedRows.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">
+                Preview & Validation ({validRows.length} valid, {parsedRows.length - validRows.length} errors)
+              </span>
+            </div>
+            <div className="max-h-60 overflow-auto rounded-lg border border-border">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-secondary/60 text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="p-2">Line</th>
+                    <th className="p-2">Name</th>
+                    <th className="p-2">Category</th>
+                    <th className="p-2">Price</th>
+                    <th className="p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {parsedRows.map((r) => (
+                    <tr key={r.lineNum} className={r.error ? "bg-berbere-50/50" : ""}>
+                      <td className="p-2 font-mono text-muted-foreground">#{r.lineNum}</td>
+                      <td className="p-2 font-medium">{r.name || "—"}</td>
+                      <td className="p-2 text-muted-foreground">{r.category}</td>
+                      <td className="p-2">{r.price ? `${etb(r.price)} ETB` : "—"}</td>
+                      <td className="p-2">
+                        {r.error ? (
+                          <span className="text-berbere-600 font-semibold">{r.error}</span>
+                        ) : (
+                          <span className="text-sage-600 font-semibold">Ready to import</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

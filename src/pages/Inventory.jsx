@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Boxes, ArrowDownUp, ClipboardCheck, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Boxes, ArrowDownUp, ClipboardCheck, Trash2, AlertTriangle, Upload, Download } from "lucide-react";
 import { PageHeader, SearchInput, StatCard, EmptyState } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
 import DataTable from "@/components/ui/DataTable";
@@ -7,7 +7,7 @@ import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
 import { notifySuccess } from "@/lib/notify";
 import { businessDate, nextId, stamp } from "@/lib/datetime";
-import { cn } from "@/lib/utils";
+import { cn, downloadCsv } from "@/lib/utils";
 
 export default function Inventory() {
   const { db, updateItem, insertItem } = useData();
@@ -21,6 +21,7 @@ export default function Inventory() {
   const [tab, setTab] = useState("items");
   const [showOp, setShowOp] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
@@ -111,6 +112,7 @@ export default function Inventory() {
         actions={
           canEdit ? (
             <>
+              <button onClick={() => setShowCsvImport(true)} className="btn-outline"><Upload className="h-4 w-4" /> Import CSV</button>
               <button onClick={() => setShowOp("count")} className="btn-outline"><ClipboardCheck className="h-4 w-4" /> Stock count</button>
               <button onClick={() => setShowOp("adjust")} className="btn-outline"><ArrowDownUp className="h-4 w-4" /> Adjust</button>
               <button onClick={() => setShowOp("waste")} className="btn-outline"><Trash2 className="h-4 w-4" /> Waste</button>
@@ -198,6 +200,32 @@ export default function Inventory() {
             setAdding(false);
             notifySuccess(`${draft.name} added`);
           }} />
+      )}
+      {showCsvImport && (
+        <InventoryCsvImportModal
+          inventoryItems={inventoryItems}
+          categories={managedLists.inventoryCategories}
+          suppliers={db.suppliers}
+          onClose={() => setShowCsvImport(false)}
+          onImport={(itemsToImport) => {
+            itemsToImport.forEach((it) => {
+              const id = nextId(inventoryItems, "I", 2);
+              insertItem("inventoryItems", {
+                id,
+                name: it.name,
+                category: it.category,
+                baseUnit: it.baseUnit,
+                qty: it.qty,
+                min: it.min,
+                reorder: it.reorder,
+                supplier: it.supplier,
+                status: statusFor(it.qty, it.min),
+              });
+            });
+            notifySuccess(`Imported ${itemsToImport.length} inventory items`);
+            setShowCsvImport(false);
+          }}
+        />
       )}
     </div>
   );
@@ -349,6 +377,196 @@ function NewItemModal({ categories, suppliers, existing, onClose, onCreate }) {
         </label>
       </div>
       <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">Reorder must be above Minimum.</p>
+    </Modal>
+  );
+}
+
+function InventoryCsvImportModal({ inventoryItems, categories, suppliers, onClose, onImport }) {
+  const [parsedRows, setParsedRows] = useState([]);
+  const [errorHeader, setErrorHeader] = useState("");
+
+  const downloadTemplate = () => {
+    const csvContent =
+      "name,category,base_unit,qty,min,reorder,supplier\n" +
+      "Teff Flour,Dry goods,kg,150,50,200,Merkato Veg\n" +
+      "Cardamom,Spices,g,800,200,1000,Spice House\n" +
+      "Refined Oil,Dry goods,l,60,20,80,Shola Dairy\n";
+    downloadCsv("inventory_items_template.csv", csvContent);
+  };
+
+  const handleFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setErrorHeader("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || "");
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        setErrorHeader("CSV must contain a header row and at least one data row.");
+        setParsedRows([]);
+        return;
+      }
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const nameIdx = headers.indexOf("name");
+      const catIdx = headers.indexOf("category");
+      const unitIdx = headers.indexOf("base_unit");
+      const qtyIdx = headers.indexOf("qty");
+      const minIdx = headers.indexOf("min");
+      const reorderIdx = headers.indexOf("reorder");
+      const supIdx = headers.indexOf("supplier");
+
+      if (nameIdx === -1 || qtyIdx === -1 || minIdx === -1) {
+        setErrorHeader("Missing required header columns: 'name', 'qty', and 'min' are required.");
+        setParsedRows([]);
+        return;
+      }
+
+      const rows = [];
+      const seenNames = new Set(inventoryItems.map((i) => i.name.toLowerCase()));
+
+      lines.slice(1).forEach((line, i) => {
+        const lineNum = i + 2;
+        const cells = line.split(",").map((c) => c.trim());
+        const name = cells[nameIdx] || "";
+        const category = (catIdx >= 0 && cells[catIdx]) || categories[0] || "Dry goods";
+        const baseUnit = (unitIdx >= 0 && cells[unitIdx]) || "g";
+        const qtyStr = cells[qtyIdx] || "";
+        const minStr = cells[minIdx] || "";
+        const reorderStr = reorderIdx >= 0 ? cells[reorderIdx] : "";
+        const supplier = (supIdx >= 0 && cells[supIdx]) || suppliers[0]?.name || "Unassigned";
+
+        const qty = Number(qtyStr);
+        const min = Number(minStr);
+        const reorder = Number(reorderStr || min * 2);
+
+        let error = "";
+        if (!name) error = "Missing item name";
+        else if (seenNames.has(name.toLowerCase())) error = "Duplicate item in inventory";
+        else if (!qtyStr || !Number.isFinite(qty) || qty < 0) error = `Invalid qty (${qtyStr})`;
+        else if (!minStr || !Number.isFinite(min) || min < 0) error = `Invalid min (${minStr})`;
+
+        if (!error) {
+          seenNames.add(name.toLowerCase());
+        }
+
+        rows.push({
+          lineNum,
+          name,
+          category,
+          baseUnit,
+          qty: Number.isFinite(qty) ? qty : 0,
+          min: Number.isFinite(min) ? min : 0,
+          reorder: Number.isFinite(reorder) ? reorder : 0,
+          supplier,
+          error,
+        });
+      });
+
+      setParsedRows(rows);
+    };
+    reader.readAsText(f);
+  };
+
+  const validRows = parsedRows.filter((r) => !r.error);
+
+  return (
+    <Modal
+      title="Import Inventory Items CSV"
+      description="Upload a CSV file to add inventory items and stock levels (PRD 23.9)."
+      size="lg"
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!validRows.length) return;
+        onImport(validRows);
+      }}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-outline">Cancel</button>
+          <button type="submit" disabled={!validRows.length} className="btn-primary">
+            Import {validRows.length} valid item{validRows.length === 1 ? "" : "s"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4 text-xs">
+        <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-3">
+          <div>
+            <p className="font-semibold text-foreground text-sm">Need the CSV template?</p>
+            <p className="text-muted-foreground text-xs">Download our standardized template with columns &amp; sample entries.</p>
+          </div>
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="btn-outline text-xs whitespace-nowrap"
+          >
+            <Download className="h-3.5 w-3.5 mr-1 inline" /> Download template
+          </button>
+        </div>
+
+        <div>
+          <label className="mb-1 block font-medium text-foreground">Select CSV File</label>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFileChange}
+            className="input-soft file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:cursor-pointer"
+          />
+        </div>
+
+        {errorHeader && (
+          <div className="rounded-lg bg-berbere-100 p-2.5 text-berbere-700 font-medium">
+            {errorHeader}
+          </div>
+        )}
+
+        {parsedRows.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">
+                Preview & Validation ({validRows.length} valid, {parsedRows.length - validRows.length} errors)
+              </span>
+            </div>
+            <div className="max-h-60 overflow-auto rounded-lg border border-border">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-secondary/60 text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="p-2">Line</th>
+                    <th className="p-2">Name</th>
+                    <th className="p-2">Category</th>
+                    <th className="p-2">Unit</th>
+                    <th className="p-2">Qty</th>
+                    <th className="p-2">Min</th>
+                    <th className="p-2">Supplier</th>
+                    <th className="p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {parsedRows.map((r) => (
+                    <tr key={r.lineNum} className={r.error ? "bg-berbere-50/50" : ""}>
+                      <td className="p-2 font-mono text-muted-foreground">#{r.lineNum}</td>
+                      <td className="p-2 font-medium">{r.name || "—"}</td>
+                      <td className="p-2 text-muted-foreground">{r.category}</td>
+                      <td className="p-2">{r.baseUnit}</td>
+                      <td className="p-2">{r.qty.toLocaleString()}</td>
+                      <td className="p-2">{r.min.toLocaleString()}</td>
+                      <td className="p-2 text-muted-foreground">{r.supplier}</td>
+                      <td className="p-2">
+                        {r.error ? (
+                          <span className="text-berbere-600 font-semibold">{r.error}</span>
+                        ) : (
+                          <span className="text-sage-600 font-semibold">Ready to import</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </Modal>
   );
 }

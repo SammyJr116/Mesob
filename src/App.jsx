@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster"
 import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
@@ -39,11 +40,93 @@ import Settings from '@/pages/Settings';
 import Notifications from '@/pages/Notifications';
 import Profile from '@/pages/Profile';
 
+const IDLE_LIMIT_MS = 30 * 60 * 1000; // 30 minutes (PRD 6.6)
+const WARNING_THRESHOLD_MS = 28 * 60 * 1000; // 28 minutes (shows 2 min warning)
+
+function IdleSessionTracker() {
+  const { role, setRole } = useRole();
+  const [secondsRemaining, setSecondsRemaining] = useState(null);
+  const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!role) {
+      setSecondsRemaining(null);
+      return;
+    }
+
+    lastActivityRef.current = Date.now();
+
+    const resetTimer = () => {
+      if (secondsRemaining === null) {
+        lastActivityRef.current = Date.now();
+      }
+    };
+
+    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    events.forEach((ev) => window.addEventListener(ev, resetTimer, { passive: true }));
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed >= IDLE_LIMIT_MS) {
+        setRole(null);
+        setSecondsRemaining(null);
+      } else if (elapsed >= WARNING_THRESHOLD_MS) {
+        const left = Math.max(1, Math.ceil((IDLE_LIMIT_MS - elapsed) / 1000));
+        setSecondsRemaining(left);
+      } else {
+        setSecondsRemaining(null);
+      }
+    }, 1000);
+
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
+      clearInterval(interval);
+    };
+  }, [role, setRole, secondsRemaining]);
+
+  if (secondsRemaining === null || !role) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="card-soft w-full max-w-sm border-gold-300 p-6 text-center shadow-xl">
+        <h3 className="font-display text-lg font-semibold text-foreground">
+          Session Expiring Soon (PRD 6.6)
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          You have been inactive. Your session will expire in{" "}
+          <span className="font-bold text-berbere-600">{secondsRemaining} seconds</span>.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setRole(null)}
+            className="btn-outline flex-1 text-xs"
+          >
+            Sign out now
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              lastActivityRef.current = Date.now();
+              setSecondsRemaining(null);
+            }}
+            className="btn-primary flex-1 text-xs"
+          >
+            Stay signed in
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Shell = () => {
   const { role } = useRole();
   if (!role) return <RoleSelect />;
   return (
-    <Layout>
+    <>
+      <IdleSessionTracker />
+      <Layout>
       <Routes>
         {/* Shared across every role: no data of its own, just chrome. */}
         <Route path="/notifications" element={<Notifications />} />
@@ -118,6 +201,7 @@ const Shell = () => {
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </Layout>
+    </>
   );
 };
 

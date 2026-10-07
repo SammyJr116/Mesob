@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, CreditCard, FileText, Ban, Tag, CheckCircle2, RotateCcw, Printer } from "lucide-react";
+import { ArrowLeft, CreditCard, FileText, Ban, Tag, CheckCircle2, RotateCcw, Printer, MapPin, UserCheck, XCircle } from "lucide-react";
 import { PageHeader, StatusBadge, SectionCard, EmptyState } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
 import { calcBill, calcCreditNote, etb } from "@/lib/format";
@@ -24,6 +24,9 @@ export default function OrderDetail() {
   const [showCancel, setShowCancel] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showCreditNote, setShowCreditNote] = useState(false);
+  const [showMoveTable, setShowMoveTable] = useState(false);
+  const [showReassignWaiter, setShowReassignWaiter] = useState(false);
+  const [itemToCancel, setItemToCancel] = useState(null);
   const isManager = isPrivileged(role);
 
   if (!found) {
@@ -76,6 +79,77 @@ export default function OrderDetail() {
     notifySuccess(`Ticket ${order.number}-${round} served`, `Delivered to ${order.table ? `Table ${order.table}` : "customer"}`);
   };
 
+  const handleMoveTable = (newTableNum) => {
+    const oldTableNum = order.table;
+    updateItem("orders", order.id, { table: newTableNum });
+    if (oldTableNum) {
+      const oldT = db.tables.find((t) => String(t.number) === String(oldTableNum));
+      if (oldT) updateItem("tables", oldT.id, { status: "Cleaning", order: null, waiter: null });
+    }
+    const newT = db.tables.find((t) => String(t.number) === String(newTableNum));
+    if (newT) updateItem("tables", newT.id, { status: "Occupied", order: order.id, waiter: order.waiter });
+
+    insertItem("cleaningTasks", {
+      id: nextId(db.cleaningTasks, "CL", 2),
+      area: `Table ${oldTableNum} (Moved)`,
+      task: `Sanitize & reset Table ${oldTableNum}`,
+      assignee: "Unassigned",
+      due: "Now",
+      status: "Pending",
+      type: "table",
+      source: `Order ${order.id} moved to Table ${newTableNum}`,
+    });
+    logAction("Moved table", order.id, `Table ${oldTableNum}`, `Table ${newTableNum}`, "Customer requested table change");
+    notifySuccess(`Order moved to Table ${newTableNum}`);
+    setShowMoveTable(false);
+  };
+
+  const handleReassignWaiter = (newWaiter, reason) => {
+    const oldWaiter = order.waiter;
+    updateItem("orders", order.id, { waiter: newWaiter });
+    if (order.table) {
+      const tbl = db.tables.find((t) => String(t.number) === String(order.table));
+      if (tbl) updateItem("tables", tbl.id, { waiter: newWaiter });
+    }
+    logAction("Reassigned waiter", order.id, oldWaiter, newWaiter, reason || "Manager reassignment");
+    notifySuccess(`Order reassigned to ${newWaiter}`);
+    setShowReassignWaiter(false);
+  };
+
+  const handleCancelItem = (reason, recordWaste) => {
+    if (!itemToCancel) return;
+    const { item, itemIndex, ticketRound, ticketStatus } = itemToCancel;
+    updateItem("orders", order.id, (o) => ({
+      ...o,
+      tickets: o.tickets.map((tk) => {
+        if (tk.round !== ticketRound) return tk;
+        return {
+          ...tk,
+          items: tk.items.map((it, idx) => {
+            if (idx !== itemIndex) return it;
+            return { ...it, cancelled: true, cancelReason: reason };
+          }),
+        };
+      }),
+    }));
+
+    if (recordWaste) {
+      insertItem("stockMovements", {
+        id: nextId(db.stockMovements, "SM", 2),
+        item: item.name,
+        qty: -Number(item.qty || 1),
+        type: "Waste",
+        date: stamp(),
+        user: role || "Manager",
+        reason: `Cancelled item on ${order.id} (${ticketStatus}): ${reason}`,
+      });
+    }
+
+    logAction("Cancelled line item", order.id, `${item.qty}× ${item.name}`, "Cancelled", reason);
+    notifySuccess(`Cancelled ${item.qty}× ${item.name}`);
+    setItemToCancel(null);
+  };
+
   return (
     <div>
       <Link to="/orders" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
@@ -109,16 +183,52 @@ export default function OrderDetail() {
               }
             >
               <div className="space-y-2">
-                {t.items.map((it, i) => (
-                  <div key={i} className="flex items-start justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
-                    <div>
-                      <p className="font-medium">{it.qty}× {it.name} {it.variant && <span className="text-muted-foreground">· {it.variant}</span>}</p>
-                      {it.addons?.length > 0 && <p className="text-xs text-muted-foreground">+ {it.addons.join(", ")}</p>}
-                      {it.note && <p className="text-xs text-muted-foreground">Note: {it.note}</p>}
+                {t.items.map((it, i) => {
+                  const canCancelItem =
+                    !it.cancelled &&
+                    order.status !== "Completed" &&
+                    order.status !== "Cancelled" &&
+                    (t.status === "Submitted"
+                      ? (role?.toLowerCase() === "waiter" || isManager || order.waiter === role)
+                      : isManager);
+
+                  if (it.cancelled) {
+                    return (
+                      <div key={i} className="flex items-start justify-between rounded-lg border border-dashed border-border bg-secondary/20 px-3 py-2.5 opacity-60">
+                        <div>
+                          <p className="font-medium line-through">{it.qty}× {it.name} {it.variant && <span>· {it.variant}</span>}</p>
+                          <span className="inline-block mt-0.5 rounded bg-berbere-100 dark:bg-berbere-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-berbere-700">
+                            Cancelled: {it.cancelReason || "Cancelled"}
+                          </span>
+                        </div>
+                        <span className="text-xs line-through text-muted-foreground">{etb(it.price * it.qty)} ETB</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={i} className="flex items-start justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
+                      <div>
+                        <p className="font-medium">{it.qty}× {it.name} {it.variant && <span className="text-muted-foreground">· {it.variant}</span>}</p>
+                        {it.addons?.length > 0 && <p className="text-xs text-muted-foreground">+ {it.addons.join(", ")}</p>}
+                        {it.note && <p className="text-xs text-muted-foreground">Note: {it.note}</p>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{etb(it.price * it.qty)} ETB</span>
+                        {canCancelItem && (
+                          <button
+                            type="button"
+                            onClick={() => setItemToCancel({ item: it, itemIndex: i, ticketRound: t.round, ticketStatus: t.status })}
+                            className="rounded p-1 text-muted-foreground hover:text-berbere-600 hover:bg-berbere-50 transition-colors"
+                            title="Cancel line item"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span className="font-medium">{etb(it.price * it.qty)} ETB</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="mt-3 text-xs text-muted-foreground">Sent at {t.submittedAt} · {t.status}</p>
             </SectionCard>
@@ -185,6 +295,11 @@ export default function OrderDetail() {
               <button onClick={() => setShowBill(true)} className="btn-outline w-full">
                 <FileText className="h-4 w-4" /> {order.invoice ? "View tax invoice" : "Bill preview"}
               </button>
+              {order.table && order.status !== "Completed" && order.status !== "Cancelled" && (
+                <button onClick={() => setShowMoveTable(true)} className="btn-outline w-full text-xs">
+                  <MapPin className="h-4 w-4" /> Move table
+                </button>
+              )}
               {isManager && order.status !== "Completed" && (
                 <button onClick={() => setShowDiscount(true)} className="btn-ghost w-full">
                   <Tag className="h-4 w-4" /> Apply discount (Manager)
@@ -212,6 +327,42 @@ export default function OrderDetail() {
             <dl className="space-y-2 text-sm">
               <Row label="Customer" value={order.customer || "Walk-in (no record)"} />
               <Row label="Guests" value={order.guests} />
+              <Row
+                label="Table"
+                value={
+                  order.table ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span>Table {order.table}</span>
+                      {order.status !== "Completed" && order.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMoveTable(true)}
+                          className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-0.5"
+                        >
+                          <MapPin className="h-3 w-3" /> Move
+                        </button>
+                      )}
+                    </span>
+                  ) : "Takeaway"
+                }
+              />
+              <Row
+                label="Waiter"
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <span>{order.waiter}</span>
+                    {isManager && order.status !== "Completed" && order.status !== "Cancelled" && (
+                      <button
+                        type="button"
+                        onClick={() => setShowReassignWaiter(true)}
+                        className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-0.5"
+                      >
+                        <UserCheck className="h-3 w-3" /> Reassign
+                      </button>
+                    )}
+                  </span>
+                }
+              />
               <Row label="Notes" value={order.notes || "—"} />
               <Row label="Invoice" value={order.invoice || "Not issued"} />
               {order.buyerName && <Row label="Buyer" value={order.buyerName} />}
@@ -322,6 +473,30 @@ export default function OrderDetail() {
             notifySuccess(`Credit note ${id} issued for ${etb(creditData.totalRefund)} ETB`);
             setShowCreditNote(false);
           }}
+        />
+      )}
+      {showMoveTable && (
+        <MoveTableModal
+          order={order}
+          tables={db.tables || []}
+          onClose={() => setShowMoveTable(false)}
+          onConfirm={handleMoveTable}
+        />
+      )}
+      {showReassignWaiter && (
+        <ReassignWaiterModal
+          order={order}
+          users={db.users || []}
+          employees={db.employees || []}
+          onClose={() => setShowReassignWaiter(false)}
+          onConfirm={handleReassignWaiter}
+        />
+      )}
+      {itemToCancel && (
+        <CancelItemModal
+          target={itemToCancel}
+          onClose={() => setItemToCancel(null)}
+          onConfirm={handleCancelItem}
         />
       )}
     </div>
@@ -644,6 +819,179 @@ function DiscountModal({ order, onClose, onApply }) {
       <input id="discount-pct" type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} className="input-soft mb-3" />
       <label htmlFor="discount-reason" className="mb-1 block text-sm font-medium">Reason (required)</label>
       <input id="discount-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Regular customer" className="input-soft" />
+    </Modal>
+  );
+}
+
+function MoveTableModal({ order, tables, onClose, onConfirm }) {
+  const candidateTables = (tables || []).filter(
+    (t) => t.status === "Available" && !t.reservation && String(t.number) !== String(order.table)
+  );
+  const [selectedTable, setSelectedTable] = useState(candidateTables[0]?.number || "");
+
+  return (
+    <Modal
+      title="Move order to another table"
+      description={`Transfer active order ${order.id} from Table ${order.table} to an available table.`}
+      size="sm"
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!selectedTable) return;
+        onConfirm(selectedTable);
+      }}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-outline">Cancel</button>
+          <button type="submit" className="btn-primary" disabled={!selectedTable}>Move table</button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        {candidateTables.length === 0 ? (
+          <p className="text-sm text-berbere-600">No tables are currently available without reservations.</p>
+        ) : (
+          <div>
+            <label htmlFor="move-table-select" className="mb-1 block text-sm font-medium">Select destination table</label>
+            <select
+              id="move-table-select"
+              value={selectedTable}
+              onChange={(e) => setSelectedTable(e.target.value)}
+              className="input-soft"
+            >
+              {candidateTables.map((t) => (
+                <option key={t.id} value={t.number}>
+                  Table {t.number} ({t.seats} seats · {t.section})
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Moving will mark Table {order.table} as "Cleaning" and create a sanitize task. Table {selectedTable} will become "Occupied".
+            </p>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+function ReassignWaiterModal({ order, users, employees, onClose, onConfirm }) {
+  const waiterOptions = Array.from(
+    new Set([
+      ...(users || [])
+        .filter((u) => u.status === "Active" && ["waiter", "manager"].includes(u.role?.toLowerCase()))
+        .map((u) => u.fullName || u.username),
+      ...(employees || [])
+        .filter((e) => e.status === "Active" && e.role?.toLowerCase() === "waiter")
+        .map((e) => e.name),
+    ])
+  ).filter(Boolean);
+
+  const [waiter, setWaiter] = useState(waiterOptions[0] || order.waiter);
+  const [reason, setReason] = useState("");
+
+  return (
+    <Modal
+      title="Reassign order waiter"
+      description={`Change assigned staff for order ${order.id}. Currently assigned: ${order.waiter}.`}
+      size="sm"
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!waiter || waiter === order.waiter) return;
+        onConfirm(waiter, reason.trim());
+      }}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-outline">Cancel</button>
+          <button type="submit" className="btn-primary" disabled={!waiter || waiter === order.waiter}>Reassign</button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="reassign-waiter-select" className="mb-1 block text-sm font-medium">New assigned waiter</label>
+          <select
+            id="reassign-waiter-select"
+            value={waiter}
+            onChange={(e) => setWaiter(e.target.value)}
+            className="input-soft"
+          >
+            {waiterOptions.map((w) => (
+              <option key={w} value={w}>
+                {w} {w === order.waiter ? "(Current)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="reassign-reason" className="mb-1 block text-sm font-medium">Reason (optional)</label>
+          <input
+            id="reassign-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Shift change, section handover"
+            className="input-soft"
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function CancelItemModal({ target, onClose, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const inPrepOrReady = ["Preparing", "Ready", "Served"].includes(target.ticketStatus);
+  const [recordWaste, setRecordWaste] = useState(inPrepOrReady);
+  const valid = reason.trim().length > 0;
+
+  return (
+    <Modal
+      title="Cancel line item"
+      description={`Cancel ${target.item.qty}× ${target.item.name} from Ticket round ${target.ticketRound} (${target.ticketStatus}).`}
+      size="sm"
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        onConfirm(reason.trim(), recordWaste);
+      }}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-outline">Back</button>
+          <button type="submit" className="btn-destructive" disabled={!valid}>Cancel item</button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="cancel-item-reason" className="mb-1 block text-sm font-medium">Reason for cancellation (required)</label>
+          <input
+            id="cancel-item-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Customer changed mind, incorrect entry"
+            className="input-soft"
+            autoFocus
+          />
+        </div>
+        {inPrepOrReady && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-xs space-y-1.5">
+            <p className="font-medium text-amber-900 dark:text-amber-200">
+              Item was already in preparation ({target.ticketStatus})
+            </p>
+            <label className="flex items-center gap-2 cursor-pointer text-amber-950 dark:text-amber-300">
+              <input
+                type="checkbox"
+                checked={recordWaste}
+                onChange={(e) => setRecordWaste(e.target.checked)}
+                className="rounded"
+              />
+              Record as kitchen waste in stock movements
+            </label>
+          </div>
+        )}
+      </div>
     </Modal>
   );
 }

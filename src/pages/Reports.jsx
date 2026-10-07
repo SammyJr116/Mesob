@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { Download, FileText, TrendingUp, BarChart3, Boxes, ShoppingCart, Receipt, Wrench, Users, Sparkles, ClipboardList } from "lucide-react";
+import { Download, FileText, TrendingUp, BarChart3, Boxes, ShoppingCart, Receipt, Wrench, Users, Sparkles, ClipboardList, RotateCcw, Lock } from "lucide-react";
 import { PageHeader, SectionCard, StatCard, EmptyState } from "@/components/ui/shared";
 import DataTable from "@/components/ui/DataTable";
+import Modal from "@/components/ui/Modal";
 import { useData } from "@/lib/DataContext";
+import { useRole } from "@/lib/RoleContext";
+import { isPrivileged } from "@/lib/roles";
 import { etb, calcBill, round2 } from "@/lib/format";
-import { businessDate, businessDayOfStamp, toDate, daysAgo, isoDate } from "@/lib/datetime";
+import { businessDate, businessDayOfStamp, toDate, daysAgo, isoDate, nextId, stamp } from "@/lib/datetime";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +20,14 @@ const TABS = [
 ];
 
 export default function Reports() {
-  const { db } = useData();
+  const { db, insertItem, setCollection } = useData();
+  const { role } = useRole();
+  const isManager = isPrivileged(role);
   const { restaurant } = db;
   const [tab, setTab] = useState("sales");
   const [from, setFrom] = useState(daysAgo(6));
   const [to, setTo] = useState(isoDate());
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   const report = useMemo(() => buildReport(db), [db]);
 
@@ -96,6 +102,63 @@ export default function Reports() {
     // A text file keeps this dependency-free; the label says what it is.
     downloadCsv(`end-of-day-${isoDate()}.txt`, text);
     notifySuccess("End-of-day summary downloaded");
+  };
+
+  const activeBusinessDate = db.restaurant?.currentBusinessDate || isoDate();
+
+  const handleConfirmCloseDay = () => {
+    const curr = toDate(activeBusinessDate) || new Date();
+    const nextD = new Date(curr);
+    nextD.setDate(nextD.getDate() + 1);
+    const nextDateStr = isoDate(nextD);
+
+    const closureRecord = {
+      id: nextId(db.dayClosures || [], "DC", 3),
+      date: activeBusinessDate,
+      nextDate: nextDateStr,
+      closedAt: stamp(),
+      closedBy: role || "Manager",
+      completedOrders: todayRows.filter((o) => o.status === "Completed").length,
+      netSales: sumOf(todayRows, "net"),
+      tax: sumOf(todayRows, "tax"),
+      serviceCharge: sumOf(todayRows, "service"),
+      totalCollected: sumOf(todayRows, "total"),
+      carriedOver: todayRows.filter((o) => o.status === "Active" || o.status === "Served").length,
+    };
+
+    insertItem("dayClosures", closureRecord);
+    setCollection("restaurant", (prev) => ({ ...prev, currentBusinessDate: nextDateStr }));
+    insertItem("activityLog", {
+      id: nextId(db.activityLog, "L", 2),
+      who: role || "Manager",
+      when: stamp(),
+      action: "Business day closed",
+      target: activeBusinessDate,
+      old: activeBusinessDate,
+      new: nextDateStr,
+      reason: "Manager closed business day",
+    });
+    notifySuccess(`Business day ${activeBusinessDate} closed. Advanced to ${nextDateStr}.`);
+    setShowCloseModal(false);
+  };
+
+  const handleReopenDay = () => {
+    const closures = db.dayClosures || [];
+    if (!closures.length) return;
+    const lastClosure = closures[0];
+    setCollection("restaurant", (prev) => ({ ...prev, currentBusinessDate: lastClosure.date }));
+    setCollection("dayClosures", (prev) => prev.filter((dc) => dc.id !== lastClosure.id));
+    insertItem("activityLog", {
+      id: nextId(db.activityLog, "L", 2),
+      who: role || "Manager",
+      when: stamp(),
+      action: "Reopened business day",
+      target: lastClosure.date,
+      old: "Closed",
+      new: "Open",
+      reason: "Manager reopened business day",
+    });
+    notifySuccess(`Reopened business day ${lastClosure.date}`);
   };
 
   return (
@@ -217,32 +280,120 @@ export default function Reports() {
       {tab === "staff" && <StaffTab db={db} rows={rows} />}
 
       {tab === "dayclose" && (
-        <SectionCard
-          title={`End-of-day summary — ${businessDate()}`}
-          action={<button onClick={downloadDayClose} className="btn-outline text-sm"><FileText className="h-4 w-4" /> Download summary</button>}
+        <div className="space-y-5">
+          <SectionCard
+            title={`End-of-day summary — ${activeBusinessDate}`}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={downloadDayClose} className="btn-outline text-xs">
+                  <FileText className="h-4 w-4" /> Download summary
+                </button>
+                {isManager && (
+                  <button onClick={() => setShowCloseModal(true)} className="btn-primary text-xs">
+                    <Lock className="h-3.5 w-3.5 mr-1" /> Close Business Day
+                  </button>
+                )}
+                {isManager && (db.dayClosures || []).length > 0 && (
+                  <button onClick={handleReopenDay} className="btn-ghost text-xs text-amber-700 hover:bg-amber-50">
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reopen Day
+                  </button>
+                )}
+              </div>
+            }
+          >
+            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              <SummaryRow label="Active business date" value={activeBusinessDate} />
+              <SummaryRow label="Orders" value={todayRows.length} />
+              <SummaryRow label="Completed orders" value={todayRows.filter((o) => o.status === "Completed").length} />
+              <SummaryRow label="Cancelled orders" value={todayRows.filter((o) => o.status === "Cancelled").length} />
+              <SummaryRow label="Net sales" value={`${etb(sumOf(todayRows, "net"))} ETB`} />
+              <SummaryRow label="Tax collected" value={`${etb(sumOf(todayRows, "tax"))} ETB`} />
+              <SummaryRow label="Service charge" value={`${etb(sumOf(todayRows, "service"))} ETB`} />
+              <SummaryRow label="Total collected" value={`${etb(sumOf(todayRows, "total"))} ETB`} />
+              <SummaryRow label="Discounts total" value={`${etb(sumOf(todayRows, "discount"))} ETB`} />
+              <SummaryRow label="Open orders carried over" value={todayRows.filter((o) => o.status === "Active" || o.status === "Served").length} />
+            </dl>
+            <div className="mt-3 rounded-lg bg-secondary/60 p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">By payment method</p>
+              {methods.length === 0 ? (
+                <p>No payments recorded yet.</p>
+              ) : (
+                <p>{methods.map((m) => `${m.method} ${etb(m.total)}`).join(" · ")}</p>
+              )}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Regenerating this summary reflects later corrections; it is not a frozen ledger.</p>
+          </SectionCard>
+
+          {(db.dayClosures || []).length > 0 && (
+            <SectionCard title="Archived business day closures (PRD 4.1.7)">
+              <DataTable
+                caption="History of closed business days"
+                columns={[
+                  { key: "date", header: "Business Date", render: (dc) => <span className="font-semibold text-foreground">{dc.date}</span> },
+                  { key: "closedAt", header: "Closed Timestamp", render: (dc) => dc.closedAt },
+                  { key: "closedBy", header: "Closed By", render: (dc) => dc.closedBy },
+                  { key: "completedOrders", header: "Completed Orders", align: "right", render: (dc) => dc.completedOrders },
+                  { key: "netSales", header: "Net Sales", align: "right", render: (dc) => `${etb(dc.netSales)} ETB` },
+                  { key: "tax", header: "Tax Portion", align: "right", render: (dc) => `${etb(dc.tax)} ETB` },
+                  { key: "carriedOver", header: "Carried Over", align: "right", render: (dc) => dc.carriedOver },
+                ]}
+                rows={db.dayClosures}
+                empty="No archived day closures."
+              />
+            </SectionCard>
+          )}
+        </div>
+      )}
+
+      {showCloseModal && (
+        <Modal
+          title="Close Business Day"
+          description={`Finalize operations for business date ${activeBusinessDate}.`}
+          size="sm"
+          onClose={() => setShowCloseModal(false)}
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleConfirmCloseDay();
+          }}
+          footer={
+            <>
+              <button type="button" onClick={() => setShowCloseModal(false)} className="btn-outline">
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary">
+                Confirm & Close Day
+              </button>
+            </>
+          }
         >
-          <dl className="grid gap-2 text-sm sm:grid-cols-2">
-            <SummaryRow label="Business date" value={businessDate()} />
-            <SummaryRow label="Orders" value={todayRows.length} />
-            <SummaryRow label="Completed orders" value={todayRows.filter((o) => o.status === "Completed").length} />
-            <SummaryRow label="Cancelled orders" value={todayRows.filter((o) => o.status === "Cancelled").length} />
-            <SummaryRow label="Net sales" value={`${etb(sumOf(todayRows, "net"))} ETB`} />
-            <SummaryRow label="Tax collected" value={`${etb(sumOf(todayRows, "tax"))} ETB`} />
-            <SummaryRow label="Service charge" value={`${etb(sumOf(todayRows, "service"))} ETB`} />
-            <SummaryRow label="Total collected" value={`${etb(sumOf(todayRows, "total"))} ETB`} />
-            <SummaryRow label="Discounts total" value={`${etb(sumOf(todayRows, "discount"))} ETB`} />
-            <SummaryRow label="Open orders carried over" value={todayRows.filter((o) => o.status === "Active" || o.status === "Served").length} />
-          </dl>
-          <div className="mt-3 rounded-lg bg-secondary/60 p-3 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">By payment method</p>
-            {methods.length === 0 ? (
-              <p>No payments recorded yet.</p>
-            ) : (
-              <p>{methods.map((m) => `${m.method} ${etb(m.total)}`).join(" · ")}</p>
-            )}
+          <div className="space-y-3 text-xs">
+            <div className="rounded-lg bg-secondary/50 p-3 space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Business Date:</span>
+                <span className="font-semibold">{activeBusinessDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Completed Orders:</span>
+                <span className="font-semibold">{todayRows.filter((o) => o.status === "Completed").length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Net Sales:</span>
+                <span className="font-semibold">{etb(sumOf(todayRows, "net"))} ETB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tax Collected:</span>
+                <span className="font-semibold">{etb(sumOf(todayRows, "tax"))} ETB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Open Orders Carried Over:</span>
+                <span className="font-semibold text-amber-700">{todayRows.filter((o) => o.status === "Active" || o.status === "Served").length}</span>
+              </div>
+            </div>
+            <p className="text-muted-foreground">
+              Closing this day archives the sales figures and advances the system business date to the next calendar day.
+            </p>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Regenerating this summary reflects later corrections; it is not a frozen ledger.</p>
-        </SectionCard>
+        </Modal>
       )}
     </div>
   );

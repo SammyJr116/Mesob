@@ -65,7 +65,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 1.2 Table & Order Life-Cycle Gaps
 *Priority: P0 | Target: `src/pages/OrderDetail.jsx`, `src/pages/Tables.jsx`, `src/pages/NewOrder.jsx`*
 
-- [ ] **Task 1.2.1: Move Order to Another Table Action**
+- [x] **Task 1.2.1: Move Order to Another Table Action**
   - **Files**: [`src/pages/OrderDetail.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/OrderDetail.jsx), [`src/pages/Tables.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Tables.jsx)
   - **Spec**: PRD 8.3.2. Enabled for order owner (Waiter) or Manager on active dine-in orders.
   - **UI Controls**: Button `"Move table"` in `Order info` card opens a selection modal.
@@ -78,7 +78,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Logs to `db.activityLog`: `"Moved order from Table X to Table Y"`.
   - **Done When**: Moving an order updates both tables and transfers order ownership without data loss.
 
-- [ ] **Task 1.2.2: Reassign Order Waiter Modal**
+- [x] **Task 1.2.2: Reassign Order Waiter Modal**
   - **Files**: [`src/pages/OrderDetail.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/OrderDetail.jsx)
   - **Spec**: PRD 8.5.2, 9.9.3. Manager only (`isManager`).
   - **UI Controls**: In `Order info` card, render a small `"Reassign"` link next to `order.waiter`.
@@ -86,7 +86,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
   - **Action**: Updates `order.waiter` to selected user; logs to `db.activityLog`.
   - **Done When**: Manager reassigns order from Waiter A to Waiter B; order now appears in Waiter B's `/orders` filter.
 
-- [ ] **Task 1.2.3: Line-Item Cancellation & Waste Prompt**
+- [x] **Task 1.2.3: Line-Item Cancellation & Waste Prompt**
   - **Files**: [`src/pages/OrderDetail.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/OrderDetail.jsx)
   - **Spec**: PRD 9.6.1 - 9.6.3.
   - **UI Controls**: Next to each line item on a ticket:
@@ -99,7 +99,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 1.3 Menu Availability, Scheduled Prices & Meal Periods
 *Priority: P1 | Target: `src/pages/Menu.jsx`, `src/pages/NewOrder.jsx`, `src/lib/datetime.js`*
 
-- [ ] **Task 1.3.1: Scheduled Price Change Modal**
+- [x] **Task 1.3.1: Scheduled Price Change Modal**
   - **Files**: [`src/pages/Menu.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Menu.jsx)
   - **Spec**: PRD 7.8. Manager only.
   - **UI Controls**: In Menu Item Edit modal, add section `"Scheduled Price Changes"`:
@@ -108,7 +108,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Action stores array `scheduledPrices: [{ price, effectiveDate }]` on the menu item.
   - **Done When**: Price changes schedule properly; current orders continue using snapshot prices at creation time.
 
-- [ ] **Task 1.3.2: Meal Period Enforcement in `NewOrder.jsx`**
+- [x] **Task 1.3.2: Meal Period Enforcement in `NewOrder.jsx`**
   - **Files**: [`src/pages/NewOrder.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/NewOrder.jsx), [`src/lib/datetime.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/lib/datetime.js)
   - **Spec**: PRD 7.6, 7.7.
   - **Logic**: Helper `isItemInMealPeriod(item, currentTimeStr)`:
@@ -124,7 +124,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 1.4 Business Day Lifecycle & Back-Entry
 *Priority: P1 | Target: `src/pages/Reports.jsx`, `src/pages/Settings.jsx`, `src/lib/datetime.js`*
 
-- [ ] **Task 1.4.1: Business Day Close & Reopen Controls**
+- [x] **Task 1.4.1: Business Day Close & Reopen Controls**
   - **Files**: [`src/pages/Reports.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Reports.jsx)
   - **Spec**: PRD 4.1.5 - 4.1.7. Manager only.
   - **UI Controls**:
@@ -146,13 +146,13 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 1.5 Security & CSV Tools
 *Priority: P2 | Target: `src/App.jsx`, `src/pages/Login.jsx`, `src/pages/Menu.jsx`, `src/pages/Inventory.jsx`*
 
-- [ ] **Task 1.5.1: 30-Minute Idle Session Warning Modal**
+- [x] **Task 1.5.1: 30-Minute Idle Session Warning Modal**
   - **Files**: [`src/App.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/App.jsx)
   - **Spec**: PRD 6.6. Global inactivity timer across all roles.
   - **Logic**: Tracks mousemove/keydown/click. If idle for 28 minutes, render modal: *"Your session will expire in 2 minutes due to inactivity."* with button `"Stay signed in"`. If 30 minutes expires without interaction, clear active role and redirect to `/`.
   - **Done When**: 30-minute idle timer reliably triggers warning and logout.
 
-- [ ] **Task 1.5.2: Downloadable CSV Templates & Validation Previews**
+- [x] **Task 1.5.2: Downloadable CSV Templates & Validation Previews**
   - **Files**: [`src/pages/Menu.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Menu.jsx), [`src/pages/Inventory.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Inventory.jsx)
   - **Spec**: PRD 23.9.
   - **UI Controls**: `"Import CSV"` button opening a modal with:

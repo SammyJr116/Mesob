@@ -7,7 +7,7 @@ import { calcBill, etb } from "@/lib/format";
 import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
 import { ROLES } from "@/lib/roles";
-import { nextNumber, nextId, clockTime } from "@/lib/datetime";
+import { nextNumber, nextId, clockTime, isItemInMealPeriod } from "@/lib/datetime";
 import { notifySuccess } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
@@ -146,20 +146,45 @@ export default function NewOrder() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {filtered.map((m) => {
-              const blocked = m.availability !== "Available";
+              const inPeriod = isItemInMealPeriod(m);
+              const unavailable = m.availability !== "Available";
+              const blocked = unavailable || !inPeriod;
+              let blockReason = "";
+              if (unavailable) blockReason = "Unavailable";
+              else if (!inPeriod) blockReason = `${m.mealPeriod} only`;
+
               return (
-                <button key={m.id} onClick={() => !blocked && addItem(m)} disabled={blocked}
-                  className={cn("card-soft flex flex-col gap-2 p-3 text-left transition-all", !blocked && "hover:-translate-y-0.5 hover:shadow-md", blocked && "opacity-50")}>
+                <button
+                  key={m.id}
+                  onClick={() => !blocked && addItem(m)}
+                  disabled={blocked}
+                  className={cn(
+                    "card-soft flex flex-col gap-2 p-3 text-left transition-all",
+                    !blocked && "hover:-translate-y-0.5 hover:shadow-md",
+                    blocked && "opacity-50 cursor-not-allowed"
+                  )}
+                >
                   <div className="aspect-[4/3] overflow-hidden rounded-lg bg-secondary">
                     {m.image ? <img src={m.image} alt={m.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted-foreground text-xs">No image</div>}
                   </div>
                   <div className="flex items-start justify-between gap-1">
-                    <p className="text-sm font-medium leading-tight">{m.name}</p>
+                    <div>
+                      <p className="text-sm font-medium leading-tight">{m.name}</p>
+                      {m.mealPeriod && m.mealPeriod !== "All day" && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{m.mealPeriod}</p>
+                      )}
+                    </div>
                     <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-2xs font-semibold", m.fasting === "Fasting" ? "bg-sage-100 text-sage-700" : "bg-berbere-100 text-berbere-600")}>{m.fasting}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mt-auto pt-1">
                     <span className="font-display text-sm font-semibold">{etb(m.price)} ETB</span>
-                    {blocked ? <span className="text-xs text-berbere-600">Unavailable</span> : <span className="text-xs text-primary">+ Add</span>}
+                    {blocked ? (
+                      <span className="text-[11px] font-semibold text-berbere-700 bg-berbere-100/80 px-1.5 py-0.5 rounded">
+                        {blockReason}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-primary font-medium">+ Add</span>
+                    )}
                   </div>
                 </button>
               );
