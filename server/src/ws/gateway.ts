@@ -224,3 +224,27 @@ export function emitItemAutoAvailable(item: any) {
     timestamp: new Date().toISOString(),
   });
 }
+
+/**
+ * Emits delayed ticket alert with sound to Kitchen and Manager rooms (PRD 10.3)
+ */
+export function emitTicketDelayed(ticket: any) {
+  if (!io) return;
+  io.to("room:kitchen").to("room:manager").emit("ticket:delayed", {
+    ticket,
+    playSound: true,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Emits reservation no-show alert
+ */
+export function emitReservationNoShow(reservation: any) {
+  if (!io) return;
+  io.to("room:manager").to("room:waiter").emit("reservation:no_show", {
+    reservation,
+    timestamp: new Date().toISOString(),
+  });
+}
+

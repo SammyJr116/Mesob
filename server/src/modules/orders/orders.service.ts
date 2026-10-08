@@ -25,6 +25,7 @@ export interface CreateOrderInput {
   type: "Dine-in" | "Takeaway";
   tableId?: string;
   tableNumber?: string;
+  reservationId?: string;
   waiterId?: string;
   customerPhone?: string;
   customerName?: string;
@@ -70,7 +71,25 @@ export class OrdersService {
         throw new OrderError("Selected table not found", 404);
       }
 
-      if (table.status !== "Available") {
+      // Check active reservations on current business day (PRD 8.2.3, 13.3.1 Walk-In Blocking)
+      const activeReservation = await prisma.reservation.findFirst({
+        where: {
+          date: businessDate,
+          status: { in: ["Pending", "Confirmed", "Arrived"] },
+          tables: {
+            some: { tableId: table.id },
+          },
+        },
+      });
+
+      if (activeReservation && !input.reservationId) {
+        throw new OrderError(
+          `Table ${table.number} has an active reservation (${activeReservation.reservationNumber}) today and cannot be used for walk-in orders (PRD 13.3.1)`,
+          400
+        );
+      }
+
+      if (table.status !== "Available" && table.status !== "Reserved") {
         throw new OrderError(`Table ${table.number} is currently ${table.status}. Only Available tables can be seated.`, 400);
       }
     }

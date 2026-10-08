@@ -310,24 +310,24 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 5.1 Reservations Engine
 *Priority: P0 | Target: `server/src/modules/reservations/`*
 
-- [ ] **Task 5.1.1: Reservation Overlap Validator**
+- [x] **Task 5.1.1: Reservation Overlap Validator**
   - **Files**: `server/src/modules/reservations/reservations.service.ts`
   - **Spec**: PRD 13.2. Checks `startTime` to `startTime + reservationDuration` across all requested tables.
   - **Done When**: Overlapping booking on same table is rejected with 409 Conflict.
 
-- [ ] **Task 5.1.2: Walk-In Blocking Enforcer**
+- [x] **Task 5.1.2: Walk-In Blocking Enforcer**
   - **Spec**: PRD 8.2.3, 13.3. Opening dine-in walk-in order rejects tables that have an active reservation today.
   - **Done When**: Walk-in attempt on reserved table returns validation error.
 
 ### 5.2 Background Automation Scheduler
 *Priority: P0 | Target: `server/src/scheduler/`*
 
-- [ ] **Task 5.2.1: Business Day Auto-Close Job (Daily at 04:00 AM)**
+- [x] **Task 5.2.1: Business Day Auto-Close Job (Daily at 04:00 AM)**
   - **Files**: `server/src/scheduler/day-close.job.ts`
   - **Spec**: PRD 4.1.5, 22.6. Runs at configured closing time: closes business day, compiles EOD summary, resets daily order sequence.
   - **Done When**: Cron triggers day close and logs summary to `DayClosure`.
 
-- [ ] **Task 5.2.2: Delayed Ticket & No-Show Poller**
+- [x] **Task 5.2.2: Delayed Ticket & No-Show Poller**
   - **Files**: `server/src/scheduler/monitors.job.ts`
   - **Spec**: PRD 10.3, 13.4. Runs every 1 minute for delayed tickets; runs every 5 minutes to mark reservations past `noShowGrace` as `No Show`.
   - **Done When**: Overdue reservations auto-transition to `No Show` and release tables.
@@ -335,12 +335,12 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 5.3 Reporting & CSV Streaming Engine
 *Priority: P1 | Target: `server/src/modules/reports/`*
 
-- [ ] **Task 5.3.1: Financial & Sales Analytics Endpoints**
+- [x] **Task 5.3.1: Financial & Sales Analytics Endpoints**
   - **Files**: `server/src/modules/reports/reports.service.ts`
   - **Spec**: PRD 22.2. Computes net sales, taxes, discounts, and credit notes by day range.
   - **Done When**: Aggregates match PRD financial definitions exactly.
 
-- [ ] **Task 5.3.2: CSV Report Streaming**
+- [x] **Task 5.3.2: CSV Report Streaming**
   - **Files**: `server/src/modules/reports/reports.routes.ts`
   - **Spec**: PRD 22.1.2. `GET /api/v1/reports/:type/csv` streams CSV download.
   - **Done When**: Endpoint downloads CSV matching report rows.

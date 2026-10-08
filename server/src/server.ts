@@ -12,6 +12,10 @@ import { stockCountRoutes } from "./modules/inventory/stock-count.routes.js";
 import { suppliersRoutes } from "./modules/purchasing/suppliers.routes.js";
 import { purchasesRoutes } from "./modules/purchasing/purchases.routes.js";
 import { recipesRoutes } from "./modules/recipes/recipes.routes.js";
+import { reservationsRoutes } from "./modules/reservations/reservations.routes.js";
+import { cleaningRoutes } from "./modules/facility/cleaning.routes.js";
+import { reportsRoutes } from "./modules/reports/reports.routes.js";
+import { monitorsJob } from "./scheduler/monitors.job.js";
 import { requireRole } from "./middleware/rbac.js";
 import { Role } from "@prisma/client";
 import { initSocketGateway } from "./ws/gateway.js";
@@ -76,6 +80,15 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Recipes Routes (PRD 7.9)
   await app.register(recipesRoutes, { prefix: "/api/v1/recipes" });
 
+  // Reservations Engine Routes (PRD 13)
+  await app.register(reservationsRoutes, { prefix: "/api/v1/reservations" });
+
+  // Facility & Cleaning Routes (PRD 14)
+  await app.register(cleaningRoutes, { prefix: "/api/v1/cleaning" });
+
+  // Reporting, Analytics & Day Closure Routes (PRD 22)
+  await app.register(reportsRoutes, { prefix: "/api/v1/reports" });
+
   // Example Protected RBAC Route for Testing (PRD 3.3)
   app.get(
     "/api/v1/reports/test",
@@ -102,9 +115,11 @@ export async function start() {
     const host = process.env.HOST || "0.0.0.0";
 
     await app.listen({ port, host });
+    monitorsJob.start();
     console.log(`[Mesob API] Server running at http://localhost:${port}`);
     console.log(`[Mesob API] Health endpoint at http://localhost:${port}/api/v1/health`);
     console.log(`[Mesob API] WebSocket Gateway initialized on port ${port}`);
+    console.log(`[Mesob API] Background Monitors Poller started`);
     return app;
   } catch (err) {
     console.error("Failed to start server:", err);
