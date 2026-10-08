@@ -279,13 +279,13 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 4.1 Automated Recipe Depletion Engine
 *Priority: P0 | Target: `server/src/modules/inventory/`*
 
-- [ ] **Task 4.1.1: Recipe Depletion Transaction**
+- [x] **Task 4.1.1: Recipe Depletion Transaction**
   - **Files**: `server/src/modules/inventory/depletion.service.ts`
   - **Spec**: PRD 15.6. Triggered when ticket item transitions to `Served` and `settings.inventoryTracking == true`.
   - **Logic**: For each item, multiplies recipe ingredient lines by variant multiplier and item quantity; inserts `StockMovement` (type `Sale`) with negative quantity.
   - **Done When**: Serving 2 Large Doro Wot items deducts correct recipe multiples from stock records.
 
-- [ ] **Task 4.1.2: Auto-Unavailability Rule**
+- [x] **Task 4.1.2: Auto-Unavailability Rule**
   - **Files**: `server/src/modules/inventory/inventory.service.ts`
   - **Spec**: PRD 7.7.3. If stock of any ingredient drops below 1 portion, flag menu item as `isAutoUnavailable = true`.
   - **Done When**: Short stock automatically blocks menu item from new orders; restocking clears the auto flag.
@@ -293,12 +293,12 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 4.2 Stock Counts & Purchasing Pipeline
 *Priority: P1 | Target: `server/src/modules/purchasing/`*
 
-- [ ] **Task 4.2.1: Stock Count Reconciliation Endpoint**
+- [x] **Task 4.2.1: Stock Count Reconciliation Endpoint**
   - **Files**: `server/src/modules/inventory/stock-count.routes.ts`
   - **Spec**: PRD 15.5. `POST /api/v1/inventory/counts` saves counted quantities, creates adjustment movements, and alerts Manager if variance exceeds threshold.
   - **Done When**: Count creates signed adjustment movements and logs variance.
 
-- [ ] **Task 4.2.2: Purchase Approval & Receiving Workflow**
+- [x] **Task 4.2.2: Purchase Approval & Receiving Workflow**
   - **Files**: `server/src/modules/purchasing/purchases.routes.ts`
   - **Spec**: PRD 16.2. `PATCH /api/v1/purchases/:id/approve` (Manager only); `POST /api/v1/purchases/:id/receive` adds delivered quantity to inventory stock.
   - **Done When**: Receiving PO increments stock and records receiving date.

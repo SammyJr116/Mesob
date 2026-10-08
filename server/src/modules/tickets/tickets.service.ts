@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { Role } from "@prisma/client";
 import { emitTicketStatus, emitOrderUpdated } from "../../ws/gateway.js";
 import { ordersService } from "../orders/orders.service.js";
+import { depletionService } from "../inventory/depletion.service.js";
 
 export class TicketError extends Error {
   statusCode: number;
@@ -157,6 +158,9 @@ export class TicketsService {
       where: { ticketId, status: { not: "Cancelled" } },
       data: { status: "Served" },
     });
+
+    // Recipe depletion transaction (PRD 15.6)
+    await depletionService.depleteStockForTicket(ticketId, caller);
 
     // Check if ALL non-cancelled tickets in this order are now Served (PRD 9.5.2)
     const allOrderTickets = await prisma.ticket.findMany({

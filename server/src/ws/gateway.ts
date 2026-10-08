@@ -191,3 +191,36 @@ export function emitOrderUpdated(order: any) {
     timestamp: new Date().toISOString(),
   });
 }
+
+/**
+ * Emits low stock alert to Inventory and Manager rooms (PRD 15.8.1)
+ */
+export function emitLowStockAlert(item: any) {
+  if (!io) return;
+  io.to("room:inventory").to("room:manager").emit("inventory:low_stock", {
+    item,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Emits menu item auto-unavailable alert to Kitchen and Manager rooms (PRD 15.8.2)
+ */
+export function emitItemAutoUnavailable(item: any) {
+  if (!io) return;
+  io.to("room:kitchen").to("room:manager").emit("menu:item_unavailable", {
+    item,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Emits menu item restored to auto-available (PRD 7.7.4)
+ */
+export function emitItemAutoAvailable(item: any) {
+  if (!io) return;
+  io.to("room:kitchen").to("room:manager").emit("menu:item_available", {
+    item,
+    timestamp: new Date().toISOString(),
+  });
+}

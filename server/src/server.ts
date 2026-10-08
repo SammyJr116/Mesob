@@ -7,6 +7,11 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { ordersRoutes } from "./modules/orders/orders.routes.js";
 import { ticketsRoutes } from "./modules/tickets/tickets.routes.js";
 import { billingRoutes } from "./modules/billing/billing.routes.js";
+import { inventoryRoutes } from "./modules/inventory/inventory.routes.js";
+import { stockCountRoutes } from "./modules/inventory/stock-count.routes.js";
+import { suppliersRoutes } from "./modules/purchasing/suppliers.routes.js";
+import { purchasesRoutes } from "./modules/purchasing/purchases.routes.js";
+import { recipesRoutes } from "./modules/recipes/recipes.routes.js";
 import { requireRole } from "./middleware/rbac.js";
 import { Role } from "@prisma/client";
 import { initSocketGateway } from "./ws/gateway.js";
@@ -59,6 +64,17 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Billing, Invoices & PDF Routes (PRD 11)
   await app.register(billingRoutes, { prefix: "/api/v1/billing" });
+
+  // Inventory & Stock Count Routes (PRD 15)
+  await app.register(inventoryRoutes, { prefix: "/api/v1/inventory" });
+  await app.register(stockCountRoutes, { prefix: "/api/v1/inventory" });
+
+  // Purchasing & Suppliers Routes (PRD 16)
+  await app.register(suppliersRoutes, { prefix: "/api/v1/purchasing" });
+  await app.register(purchasesRoutes, { prefix: "/api/v1/purchases" });
+
+  // Recipes Routes (PRD 7.9)
+  await app.register(recipesRoutes, { prefix: "/api/v1/recipes" });
 
   // Example Protected RBAC Route for Testing (PRD 3.3)
   app.get(
