@@ -222,12 +222,12 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 3.1 Socket.io Real-Time Dispatch Gateway
 *Priority: P0 | Target: `server/src/ws/gateway.ts`*
 
-- [ ] **Task 3.1.1: Authenticated Socket Server**
+- [x] **Task 3.1.1: Authenticated Socket Server**
   - **Files**: `server/src/ws/gateway.ts`
   - **Spec**: PRD 10.4, 23.1. Authenticates socket connections via session cookie; assigns sockets to rooms: `room:kitchen`, `room:waiter:${userId}`, `room:manager`.
   - **Done When**: Client joins room based on verified role token.
 
-- [ ] **Task 3.1.2: Ticket & Order Event Broadcasters**
+- [x] **Task 3.1.2: Ticket & Order Event Broadcasters**
   - **Spec**:
     - `ticket:submitted` → emits to `room:kitchen` with sound flag.
     - `ticket:ready` → emits to `room:waiter:${waiterId}` with sound flag.
@@ -237,29 +237,29 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 3.2 Order & Ticket REST APIs
 *Priority: P0 | Target: `server/src/modules/orders/`*
 
-- [ ] **Task 3.2.1: Order Creation & Ticket Dispatch Endpoints**
+- [x] **Task 3.2.1: Order Creation & Ticket Dispatch Endpoints**
   - **Files**: `server/src/modules/orders/orders.routes.ts`, `orders.service.ts`
   - **Spec**: PRD 9.3, 9.4. `POST /api/v1/orders` opens order; `POST /api/v1/orders/:id/tickets` dispatches new ticket rounds atomically.
   - **Done When**: Creating order sets table to `Occupied` and emits WebSocket event within 500ms.
 
-- [ ] **Task 3.2.2: Kitchen Ticket Status Lifecycle**
+- [x] **Task 3.2.2: Kitchen Ticket Status Lifecycle**
   - **Files**: `server/src/modules/tickets/tickets.routes.ts`
   - **Spec**: PRD 10.2. `PATCH /api/v1/tickets/:id/status` accepts transitions `Submitted` → `Preparing` → `Ready`.
   - **Done When**: Updating ticket status records timestamp and notifies owning waiter.
 
-- [ ] **Task 3.2.3: Waiter Serving Transition**
+- [x] **Task 3.2.3: Waiter Serving Transition**
   - **Spec**: PRD 9.5.1. `POST /api/v1/tickets/:id/serve` transitions ticket to `Served`. Only owning waiter or Manager allowed.
   - **Done When**: Transition to `Served` unlocks payment eligibility for the order.
 
 ### 3.3 Billing, Invoicing & PDF Generation
 *Priority: P0 | Target: `server/src/modules/billing/`, `server/src/services/pdf.ts`*
 
-- [ ] **Task 3.3.1: Strict Financial Bill Engine**
+- [x] **Task 3.3.1: Strict Financial Bill Engine**
   - **Files**: `server/src/modules/billing/calculator.ts`
   - **Spec**: PRD 11.1. Implements exact subtotal, service charge, discount, and tax extraction formulas.
   - **Done When**: Calculation matches PRD 11.1.2 test numbers down to exact cents.
 
-- [ ] **Task 3.3.2: Payment & Continuous Invoice Sequence**
+- [x] **Task 3.3.2: Payment & Continuous Invoice Sequence**
   - **Files**: `server/src/modules/billing/billing.service.ts`
   - **Spec**: PRD 11.4 - 11.6. `POST /api/v1/orders/:id/payment` in a PostgreSQL transaction:
     - Verifies all tickets are `Served`.
@@ -267,7 +267,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Transitions order to `Completed`, table to `Cleaning`, creates cleaner task in `CleaningTask`.
   - **Done When**: Concurrent payments generate strictly sequential invoice numbers without duplicates.
 
-- [ ] **Task 3.3.3: Official PDF Invoice Generator**
+- [x] **Task 3.3.3: Official PDF Invoice Generator**
   - **Files**: `server/src/services/pdf.ts`, `server/src/modules/billing/billing.routes.ts`
   - **Spec**: PRD 11.6.1, 22.1.3. `GET /api/v1/invoices/:id/pdf` streams generated PDF invoice containing restaurant details, TIN, line items, and tax breakdown.
   - **Done When**: Endpoint downloads valid PDF invoice matching legal fields.
