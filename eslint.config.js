@@ -6,6 +6,9 @@ import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
   {
+    ignores: ["server/**", "dist/**", "build/**"],
+  },
+  {
     files: [
       "src/**/*.{js,mjs,cjs,jsx}",
     ],

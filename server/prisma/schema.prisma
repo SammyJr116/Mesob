@@ -1,0 +1,686 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------
+// 1. ACCESS & USER MANAGEMENT (PRD 24.1, PRD 6)
+// ---------------------------------------------------------
+
+enum Role {
+  ADMIN
+  MANAGER
+  KITCHEN
+  WAITER
+  INVENTORY
+  CLEANER
+  SECURITY
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+model User {
+  id                 String            @id @default(cuid())
+  username           String            @unique
+  email              String            @unique
+  passwordHash       String
+  role               Role
+  status             UserStatus        @default(ACTIVE)
+  failedAttempts     Int               @default(0)
+  lockedUntil        DateTime?
+  mustChangePassword Boolean           @default(false)
+  employeeId         String?           @unique
+  employee           Employee?         @relation(fields: [employeeId], references: [id])
+  backEntryGrants    BackEntryGrant[]  @relation("GrantedUser")
+  activityLogs       ActivityLog[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([role])
+}
+
+model Employee {
+  id             String    @id @default(cuid())
+  employeeNumber String    @unique
+  name           String
+  role           String
+  phone          String
+  email          String?
+  nationalId     String?
+  status         String    @default("Active") // Active, On Leave, Terminated
+  joinedDate     DateTime?
+  userId         String?   @unique
+  user           User?
+  orders         Order[]   @relation("WaiterOrders")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  role      String
+  action    String
+  target    String
+  targetId  String?
+  oldValue  String?  @db.Text
+  newValue  String?  @db.Text
+  reason    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
+model BackEntryGrant {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("GrantedUser", fields: [userId], references: [id])
+  grantedById String
+  startTime   DateTime
+  endTime     DateTime
+  reason      String?
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// 2. CONFIGURATION & NUMBER SEQUENCES (PRD 5, PRD 24.1)
+// ---------------------------------------------------------
+
+model Setting {
+  id                   String   @id @default("singleton")
+  restaurantName       String   @default("Mesob Ethiopian Restaurant")
+  tin                  String   @default("0012345678")
+  vatRate              Decimal  @default(15.0) @db.Decimal(5, 2)
+  serviceChargeRate    Decimal  @default(10.0) @db.Decimal(5, 2)
+  closingTime          String   @default("04:00")
+  delayedTicketMinutes Int      @default(20)
+  lowStockThreshold    Int      @default(5)
+  inventoryTracking    Boolean  @default(true)
+  currentBusinessDate  String   @default("2026-10-08")
+  currency             String   @default("ETB")
+  updatedAt            DateTime @updatedAt
+}
+
+model NumberSequence {
+  id        String @id @default(cuid())
+  key       String @unique
+  nextValue Int    @default(1)
+}
+
+// ---------------------------------------------------------
+// 3. MENU, PRICING, VARIANTS & RECIPES (PRD 7, PRD 24.1)
+// ---------------------------------------------------------
+
+model MenuCategory {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  orderIndex Int        @default(0)
+  status     String     @default("Active")
+  items      MenuItem[]
+}
+
+model MenuItem {
+  id              String            @id @default(cuid())
+  name            String
+  categoryId      String
+  category        MenuCategory      @relation(fields: [categoryId], references: [id])
+  description     String?           @db.Text
+  image           String?
+  basePrice       Decimal           @db.Decimal(10, 2)
+  status          String            @default("Active") // Active, Inactive
+  manualAvailable Boolean           @default(true)
+  autoAvailable   Boolean           @default(true)
+  isFasting       Boolean           @default(false)
+  mealPeriod      String            @default("All day") // All day, Breakfast, Lunch, Dinner
+  variants        ItemVariant[]
+  addons          MenuItemAddon[]
+  scheduledPrices ScheduledPrice[]
+  recipe          Recipe?
+  ticketItems     TicketItem[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([categoryId])
+}
+
+model ItemVariant {
+  id               String   @id @default(cuid())
+  menuItemId       String
+  menuItem         MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name             String
+  price            Decimal  @db.Decimal(10, 2)
+  recipeMultiplier Decimal  @default(1.00) @db.Decimal(5, 2)
+  isDefault        Boolean  @default(false)
+
+  @@index([menuItemId])
+}
+
+model Addon {
+  id        String          @id @default(cuid())
+  name      String
+  price     Decimal         @db.Decimal(10, 2)
+  category  String?
+  menuItems MenuItemAddon[]
+}
+
+model MenuItemAddon {
+  menuItemId String
+  addonId    String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  addon      Addon    @relation(fields: [addonId], references: [id], onDelete: Cascade)
+
+  @@id([menuItemId, addonId])
+}
+
+model ScheduledPrice {
+  id            String   @id @default(cuid())
+  menuItemId    String
+  menuItem      MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  price         Decimal  @db.Decimal(10, 2)
+  effectiveDate String // YYYY-MM-DD
+  applied       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([menuItemId])
+  @@index([effectiveDate])
+}
+
+model Recipe {
+  id            String       @id @default(cuid())
+  menuItemId    String       @unique
+  menuItem      MenuItem     @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  yieldPortions Int          @default(1)
+  notes         String?      @db.Text
+  lines         RecipeLine[]
+}
+
+model RecipeLine {
+  id              String        @id @default(cuid())
+  recipeId        String
+  recipe          Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  quantity        Decimal       @db.Decimal(10, 3) // in base unit
+  unit            String
+
+  @@index([recipeId])
+  @@index([inventoryItemId])
+}
+
+// ---------------------------------------------------------
+// 4. TABLES, ORDERS & KITCHEN TICKETS (PRD 8, PRD 9, PRD 10)
+// ---------------------------------------------------------
+
+model Table {
+  id                 String             @id @default(cuid())
+  number             String             @unique
+  seats              Int                @default(4)
+  section            String             @default("Main Dining")
+  status             String             @default("Available") // Available, Occupied, Reserved, Cleaning
+  mergedIntoTableId  String?
+  orders             OrderTable[]
+  reservations       ReservationTable[]
+  cleaningTasks      CleaningTask[]
+}
+
+model Order {
+  id                 String       @id @default(cuid())
+  orderNumber        String       // ORD-101
+  orderDate          String       // YYYY-MM-DD
+  type               String       @default("Dine-in") // Dine-in, Takeaway
+  status             String       @default("Open") // Open, In Progress, Ready, Served, Completed, Cancelled
+  waiterId           String?
+  waiter             Employee?    @relation("WaiterOrders", fields: [waiterId], references: [id])
+  customerId         String?
+  customer           Customer?    @relation(fields: [customerId], references: [id])
+  guestCount         Int          @default(1)
+  subtotal           Decimal      @default(0.00) @db.Decimal(10, 2)
+  serviceCharge      Decimal      @default(0.00) @db.Decimal(10, 2)
+  tax                Decimal      @default(0.00) @db.Decimal(10, 2)
+  discountType       String?      // PERCENT, FIXED
+  discountValue      Decimal      @default(0.00) @db.Decimal(10, 2)
+  discountReason     String?
+  discountManagerId  String?
+  total              Decimal      @default(0.00) @db.Decimal(10, 2)
+  notes              String?      @db.Text
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledById      String?
+  completedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  tables             OrderTable[]
+  tickets            Ticket[]
+  invoice            Invoice?
+  payments           Payment[]
+
+  @@index([orderDate])
+  @@index([status])
+  @@index([waiterId])
+}
+
+model OrderTable {
+  orderId String
+  tableId String
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  table   Table @relation(fields: [tableId], references: [id])
+
+  @@id([orderId, tableId])
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  orderId      String
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  roundNumber  Int          @default(1)
+  status       String       @default("Submitted") // Submitted, Preparing, Ready, Served, Cancelled
+  isDelayed    Boolean      @default(false)
+  submittedAt  DateTime     @default(now())
+  preparingAt  DateTime?
+  readyAt      DateTime?
+  servedAt     DateTime?
+  items        TicketItem[]
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model TicketItem {
+  id                 String    @id @default(cuid())
+  ticketId           String
+  ticket             Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  menuItemId         String
+  menuItem           MenuItem  @relation(fields: [menuItemId], references: [id])
+  variantId          String?
+  variantName        String?
+  quantity           Int       @default(1)
+  unitPrice          Decimal   @db.Decimal(10, 2)
+  notes              String?
+  addonsJson         String?   @db.Text
+  status             String    @default("Pending") // Pending, Preparing, Ready, Served, Cancelled
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledById      String?
+  wasteLogged        Boolean   @default(false)
+
+  @@index([ticketId])
+  @@index([menuItemId])
+}
+
+// ---------------------------------------------------------
+// 5. BILLING, INVOICES & CREDIT NOTES (PRD 11, PRD 24.1)
+// ---------------------------------------------------------
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique // INV-000001
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id])
+  businessDate  String        // YYYY-MM-DD
+  buyerName     String?
+  buyerTin      String?
+  subtotal      Decimal       @db.Decimal(10, 2)
+  discount      Decimal       @default(0.00) @db.Decimal(10, 2)
+  serviceCharge Decimal       @default(0.00) @db.Decimal(10, 2)
+  tax           Decimal       @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  issuedAt      DateTime      @default(now())
+  creditNotes   CreditNote[]
+  lines         InvoiceLine[]
+
+  @@index([businessDate])
+}
+
+model InvoiceLine {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemName  String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  @@index([invoiceId])
+}
+
+model CreditNote {
+  id               String   @id @default(cuid())
+  creditNoteNumber String   @unique // CN-000001
+  invoiceId        String
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id])
+  businessDate     String   // YYYY-MM-DD
+  amount           Decimal  @db.Decimal(10, 2)
+  taxAmount        Decimal  @db.Decimal(10, 2)
+  reason           String
+  refundMethod     String   // Cash, Telebirr, CBE Birr, Card
+  managerId        String
+  issuedAt         DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([businessDate])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentMethod String   // Cash, Telebirr, CBE Birr, Card
+  reference     String?
+  recordedById  String
+  happenedAt    DateTime @default(now())
+  enteredAt     DateTime @default(now())
+
+  @@index([orderId])
+  @@index([happenedAt])
+}
+
+model DayClosure {
+  id           String    @id @default(cuid())
+  businessDate String    @unique // YYYY-MM-DD
+  closedAt     DateTime  @default(now())
+  closedById   String
+  reopenedAt   DateTime?
+  reopenedById String?
+  reopenReason String?
+  summaryJson  String    @db.Text
+}
+
+// ---------------------------------------------------------
+// 6. CUSTOMERS & RESERVATIONS (PRD 12, PRD 13)
+// ---------------------------------------------------------
+
+model Customer {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String        @unique
+  email        String?
+  notes        String?       @db.Text
+  orders       Order[]
+  reservations Reservation[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Reservation {
+  id                String             @id @default(cuid())
+  reservationNumber String             @unique // RES-001
+  customerId        String
+  customer          Customer           @relation(fields: [customerId], references: [id])
+  date              String             // YYYY-MM-DD
+  time              String             // HH:mm
+  guests            Int
+  durationMinutes   Int                @default(120)
+  status            String             @default("Confirmed") // Confirmed, Arrived, Completed, Cancelled, No Show
+  notes             String?            @db.Text
+  tables            ReservationTable[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([date])
+  @@index([status])
+}
+
+model ReservationTable {
+  reservationId String
+  tableId       String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  table         Table       @relation(fields: [tableId], references: [id])
+
+  @@id([reservationId, tableId])
+}
+
+// ---------------------------------------------------------
+// 7. INVENTORY, RECIPES & PURCHASING (PRD 15, PRD 16, PRD 24.1)
+// ---------------------------------------------------------
+
+model InventoryItem {
+  id                String                @id @default(cuid())
+  code              String                @unique // SKU
+  name              String
+  category          String
+  baseUnit          String
+  currentStock      Decimal               @default(0.000) @db.Decimal(10, 3)
+  minimumStock      Decimal               @default(0.000) @db.Decimal(10, 3)
+  reorderQuantity   Decimal               @default(0.000) @db.Decimal(10, 3)
+  costPerUnit       Decimal               @default(0.00) @db.Decimal(10, 2)
+  defaultSupplierId String?
+  defaultSupplier   Supplier?             @relation(fields: [defaultSupplierId], references: [id])
+  purchaseUnit      String?
+  conversionFactor  Decimal               @default(1.000) @db.Decimal(10, 3)
+  movements         StockMovement[]
+  recipeLines       RecipeLine[]
+  wasteRecords      WasteRecord[]
+  countLines        StockCountLine[]
+  purchaseLines     PurchaseRequestLine[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([category])
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  type            String        // Purchase, Sale, Adjustment, Waste, Return
+  quantity        Decimal       @db.Decimal(10, 3) // signed
+  balanceAfter    Decimal       @db.Decimal(10, 3)
+  reason          String
+  referenceId     String?
+  userId          String
+  happenedAt      DateTime      @default(now())
+
+  @@index([inventoryItemId])
+  @@index([happenedAt])
+}
+
+model StockCount {
+  id          String           @id @default(cuid())
+  countedAt   DateTime         @default(now())
+  countedById String
+  notes       String?
+  lines       StockCountLine[]
+}
+
+model StockCountLine {
+  id               String        @id @default(cuid())
+  stockCountId     String
+  stockCount       StockCount    @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  inventoryItemId  String
+  inventoryItem    InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  expectedQuantity Decimal       @db.Decimal(10, 3)
+  countedQuantity  Decimal       @db.Decimal(10, 3)
+  variance         Decimal       @db.Decimal(10, 3)
+  reason           String?
+
+  @@index([stockCountId])
+  @@index([inventoryItemId])
+}
+
+model WasteRecord {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  quantity        Decimal       @db.Decimal(10, 3)
+  unit            String
+  reason          String
+  reportedById    String
+  ticketItemId    String?
+  recordedAt      DateTime      @default(now())
+
+  @@index([inventoryItemId])
+}
+
+model Supplier {
+  id            String            @id @default(cuid())
+  name          String
+  contactPerson String?
+  phone         String
+  email         String?
+  tin           String?
+  address       String?
+  paymentTerms  String            @default("Net 15")
+  rating        Decimal           @default(5.0) @db.Decimal(3, 1)
+  status        String            @default("Active")
+  items         InventoryItem[]
+  purchases     PurchaseRequest[]
+  createdAt     DateTime          @default(now())
+}
+
+model PurchaseRequest {
+  id               String                @id @default(cuid())
+  poNumber         String                @unique // PO-001
+  supplierId       String
+  supplier         Supplier              @relation(fields: [supplierId], references: [id])
+  status           String                @default("Draft") // Draft, Pending Approval, Approved, Received, Closed, Rejected
+  isEmergency      Boolean               @default(false)
+  isReviewed       Boolean               @default(false)
+  totalAmount      Decimal               @default(0.00) @db.Decimal(10, 2)
+  requestedById    String
+  approvedById     String?
+  approvalNotes    String?
+  deliveryDate     DateTime?
+  invoiceReference String?
+  lines            PurchaseRequestLine[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([supplierId])
+  @@index([status])
+}
+
+model PurchaseRequestLine {
+  id                String          @id @default(cuid())
+  purchaseRequestId String
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  inventoryItemId   String
+  inventoryItem     InventoryItem   @relation(fields: [inventoryItemId], references: [id])
+  orderedQuantity   Decimal         @db.Decimal(10, 3)
+  receivedQuantity  Decimal         @default(0.000) @db.Decimal(10, 3)
+  unitPrice         Decimal         @db.Decimal(10, 2)
+  lineTotal         Decimal         @db.Decimal(10, 2)
+
+  @@index([purchaseRequestId])
+  @@index([inventoryItemId])
+}
+
+// ---------------------------------------------------------
+// 8. FACILITY, OPERATIONS & SECURITY (PRD 14, PRD 17, PRD 18, PRD 19, PRD 20)
+// ---------------------------------------------------------
+
+model CleaningTask {
+  id           String    @id @default(cuid())
+  area         String
+  description  String?
+  tableId      String?
+  table        Table?    @relation(fields: [tableId], references: [id])
+  assignedToId String?
+  status       String    @default("Pending") // Pending, In Progress, Completed
+  source       String    @default("Table") // Table, Routine, Manual
+  dueTime      DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status])
+  @@index([tableId])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  expenseNumber String   @unique // EXP-001
+  category      String
+  amount        Decimal  @db.Decimal(10, 2)
+  description   String
+  date          String   // YYYY-MM-DD
+  status        String   @default("Confirmed") // Pending, Confirmed, Rejected
+  recordedById  String
+  receiptUrl    String?
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+  @@index([status])
+}
+
+model MaintenanceRequest {
+  id           String    @id @default(cuid())
+  assetName    String
+  description  String
+  priority     String    @default("Medium") // Low, Medium, High, Critical
+  status       String    @default("Open") // Open, In Progress, Resolved
+  reportedById String
+  assignedTo   String?
+  cost         Decimal   @default(0.00) @db.Decimal(10, 2)
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status])
+}
+
+model Visitor {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String
+  company      String?
+  purpose      String
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  badgeNumber  String?
+  recordedById String
+}
+
+model Incident {
+  id              String    @id @default(cuid())
+  title           String
+  category        String
+  severity        String    @default("Low") // Low, Medium, High, Critical
+  description     String    @db.Text
+  location        String
+  status          String    @default("Open") // Open, Under Review, Resolved
+  reportedById    String
+  resolvedById    String?
+  resolutionNotes String?   @db.Text
+  occurredAt      DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+
+  @@index([status])
+}
+
+model LostFoundItem {
+  id              String    @id @default(cuid())
+  itemDescription String
+  locationFound   String
+  foundAt         DateTime  @default(now())
+  status          String    @default("Found") // Found, Claimed
+  claimantName    String?
+  claimantPhone   String?
+  claimedAt       DateTime?
+  recordedById    String
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  recipientRole   String?  // KITCHEN, MANAGER, WAITER, etc.
+  recipientUserId String?
+  title           String
+  message         String
+  eventType       String
+  isRead          Boolean  @default(false)
+  playSound       Boolean  @default(false)
+  link            String?
+  createdAt       DateTime @default(now())
+
+  @@index([recipientRole])
+  @@index([recipientUserId])
+  @@index([isRead])
+}

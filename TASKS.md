@@ -168,49 +168,49 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 2.1 Backend Project Setup
 *Priority: P0 | Target: `server/package.json`, `server/tsconfig.json`, `server/src/server.ts`*
 
-- [ ] **Task 2.1.1: Initialize `server/` Node.js + Fastify/Express Service**
+- [x] **Task 2.1.1: Initialize `server/` Node.js + Fastify/Express Service**
   - **Files**: `server/package.json`, `server/tsconfig.json`, `server/src/server.ts`
   - **Spec**: Fastify with `@fastify/cors`, `@fastify/cookie`, `@fastify/jwt`, `zod`.
   - **Done When**: Running `npm run dev` in `server/` boots API listening on `http://localhost:4000/api/v1/health` returning `{ status: "ok" }`.
 
-- [ ] **Task 2.1.2: PostgreSQL & Prisma Setup**
-  - **Files**: `server/prisma/schema.prisma`, `server/.env.example`
-  - **Spec**: PostgreSQL 16 connection with Prisma client.
+- [x] **Task 2.1.2: Laragon MySQL & Prisma Setup**
+  - **Files**: `server/prisma/schema.prisma`, `server/.env.example`, `server/.env`
+  - **Spec**: Laragon MySQL connection (`mysql://root:@localhost:3306/mesob_restaurant`) with Prisma client.
   - **Done When**: `npx prisma db push` successfully connects and initializes database tables.
 
 ### 2.2 Relational Data Schema (PRD Section 24)
 *Priority: P0 | Target: `server/prisma/schema.prisma`*
 
-- [ ] **Task 2.2.1: Users, Roles, Employees & Activity Log Models**
+- [x] **Task 2.2.1: Users, Roles, Employees & Activity Log Models**
   - **Spec**: PRD 24.1. Models: `User`, `Employee`, `ActivityLog`.
   - **Done When**: Enforces unique username/email, enum roles (`ADMIN`, `MANAGER`, `KITCHEN`, `WAITER`, `INVENTORY`, `CLEANER`, `SECURITY`).
 
-- [ ] **Task 2.2.2: Menu, Pricing, Variants & Recipes Models**
+- [x] **Task 2.2.2: Menu, Pricing, Variants & Recipes Models**
   - **Spec**: PRD 24.1. Models: `MenuCategory`, `MenuItem`, `ItemVariant`, `Addon`, `Recipe`, `RecipeLine`.
   - **Done When**: Enforces variant recipe multipliers and base ingredient unit links.
 
-- [ ] **Task 2.2.3: Tables, Orders, Tickets & Billing Models**
+- [x] **Task 2.2.3: Tables, Orders, Tickets & Billing Models**
   - **Spec**: PRD 24.1. Models: `Table`, `Order`, `Ticket`, `TicketItem`, `Invoice`, `CreditNote`, `Payment`.
   - **Done When**: Continuous sequence numbering constraints for invoices and credit notes.
 
-- [ ] **Task 2.2.4: Inventory, Suppliers, Purchasing & Operations Models**
+- [x] **Task 2.2.4: Inventory, Suppliers, Purchasing & Operations Models**
   - **Spec**: PRD 24.1. Models: `InventoryItem`, `StockMovement`, `Supplier`, `PurchaseRequest`, `Reservation`, `CleaningTask`.
   - **Done When**: Schema migration passes without warnings.
 
 ### 2.3 Authentication, RBAC & Lockout Engine
 *Priority: P0 | Target: `server/src/modules/auth/`*
 
-- [ ] **Task 2.3.1: Login, Logout & Session Cookie Endpoints**
+- [x] **Task 2.3.1: Login, Logout & Session Cookie Endpoints**
   - **Files**: `server/src/modules/auth/auth.routes.ts`, `auth.service.ts`
   - **Spec**: PRD 6.4. `POST /api/v1/auth/login` validates username/password with `argon2` or `bcrypt`. Returns HTTP-only signed JWT cookie with 30-minute expiry.
   - **Done When**: Valid credentials issue cookie; invalid credentials return 401 without revealing username existence.
 
-- [ ] **Task 2.3.2: 5-Attempt Lockout Handler**
+- [x] **Task 2.3.2: 5-Attempt Lockout Handler**
   - **Files**: `server/src/modules/auth/auth.service.ts`
   - **Spec**: PRD 6.5. Increments `failedAttempts`. On 5th failure, sets `lockedUntil = now + 15 min`.
   - **Done When**: Locked user receives 423 Locked with remaining minutes; Administrator endpoint `/unlock` clears lock.
 
-- [ ] **Task 2.3.3: Server-Side RBAC Guard Middleware**
+- [x] **Task 2.3.3: Server-Side RBAC Guard Middleware**
   - **Files**: `server/src/middleware/rbac.ts`
   - **Spec**: PRD 3.3 Permission Matrix. Guards routes by role; e.g. only `MANAGER` and `ADMIN` can reach `/api/v1/reports`.
   - **Done When**: Unauthorized roles receive 403 Forbidden.

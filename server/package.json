@@ -1,0 +1,32 @@
+{
+  "name": "mesob-server",
+  "version": "1.0.0",
+  "description": "Mesob Restaurant Management System API",
+  "main": "src/server.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "test": "tsx test-auth-rbac.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^10.0.0",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/jwt": "^9.0.0",
+    "@prisma/client": "^6.4.1",
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.13.0",
+    "prisma": "^6.19.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}
