@@ -69,6 +69,11 @@ async function runPhase5Tests() {
       create: { number: "T21", seats: 2, section: "Terrace", status: "Available" },
     });
 
+    // Clean up any previous test reservations on test tables
+    await prisma.reservationTable.deleteMany({
+      where: { tableId: { in: [table20.id, table21.id] } },
+    });
+
     // -------------------------------------------------------------
     // Task 5.1.1: Reservation Overlap Validator (PRD 13.2)
     // -------------------------------------------------------------
@@ -260,6 +265,7 @@ async function runPhase5Tests() {
     assert(refreshedTicket?.isDelayed === true, "Ticket isDelayed persisted in database");
 
     // 2. Create reservation in the past for today
+    await prisma.reservation.deleteMany({ where: { reservationNumber: "RES-TEST-NOSHOW" } });
     const pastReservation = await prisma.reservation.create({
       data: {
         reservationNumber: "RES-TEST-NOSHOW",
@@ -286,6 +292,12 @@ async function runPhase5Tests() {
     // Task 5.3.1 & 5.3.2: Reporting & CSV Export (PRD 22.1, 22.2)
     // -------------------------------------------------------------
     console.log("\n--- Testing Task 5.3: Reporting & CSV Export ---");
+
+    // Clean up any previous test invoices / credit notes / day closures
+    await prisma.creditNote.deleteMany({ where: { businessDate: currentBusinessDate } });
+    await prisma.invoiceLine.deleteMany({ where: { invoice: { businessDate: currentBusinessDate } } });
+    await prisma.invoice.deleteMany({ where: { businessDate: currentBusinessDate } });
+    await prisma.dayClosure.deleteMany({ where: { businessDate: currentBusinessDate } });
 
     // Create a mock completed invoice and payment on today's business date
     const testInvoice = await prisma.invoice.create({

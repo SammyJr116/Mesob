@@ -352,17 +352,17 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 6.1 Client API Layer Integration
 *Priority: P0 | Target: `src/api/`, `src/lib/DataContext.jsx`*
 
-- [ ] **Task 6.1.1: Axios/Fetch API Client & Interceptors**
+- [x] **Task 6.1.1: Axios/Fetch API Client & Interceptors**
   - **Files**: `src/api/client.js`
   - **Spec**: Base URL `http://localhost:4000/api/v1` with `withCredentials: true`. Handles 401 redirect and 403 alerts.
   - **Done When**: API client successfully executes authenticated requests.
 
-- [ ] **Task 6.1.2: Replace `localStorage` in `DataContext.jsx` with Server Queries**
+- [x] **Task 6.1.2: Replace `localStorage` in `DataContext.jsx` with Server Queries**
   - **Files**: [`src/lib/DataContext.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/lib/DataContext.jsx)
   - **Spec**: Replaces initial seed from `mockData.js` with server queries; mutations call API endpoints.
   - **Done When**: UI renders real database records upon login.
 
-- [ ] **Task 6.1.3: Wire Socket.io Client for Real-Time State**
+- [x] **Task 6.1.3: Wire Socket.io Client for Real-Time State**
   - **Files**: [`src/lib/DataContext.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/lib/DataContext.jsx), [`src/lib/notify.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/lib/notify.js)
   - **Spec**: Connects to WebSocket server; updates tickets, notifications, and tables live on inbound events.
   - **Done When**: Marking ticket ready on one browser tab immediately chimes and updates waiter screen on another browser without refresh.
@@ -370,9 +370,9 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 6.2 Acceptance Criteria Verification
 *Priority: P0 | Target: End-to-End Testing*
 
-- [ ] **Task 6.2.1: Stage 1 Acceptance Suite** [PRD 25.4.1]
+- [x] **Task 6.2.1: Stage 1 Acceptance Suite** [PRD 25.4.1]
   - Verify complete workflow: Order Creation → Kitchen Queue → Waiter Serve → Payment → PDF Invoice → Table Cleaning.
-- [ ] **Task 6.2.2: Stage 2 Acceptance Suite** [PRD 25.4.2]
+- [x] **Task 6.2.2: Stage 2 Acceptance Suite** [PRD 25.4.2]
   - Verify Recipe Depletion, Low Stock alerts, and Purchase Approvals.
-- [ ] **Task 6.2.3: Stage 3 Acceptance Suite** [PRD 25.4.3]
+- [x] **Task 6.2.3: Stage 3 Acceptance Suite** [PRD 25.4.3]
   - Verify Reservation overlap blocking, Day Auto-Close at 04:00 AM, and Reports exports.

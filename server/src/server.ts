@@ -15,6 +15,8 @@ import { recipesRoutes } from "./modules/recipes/recipes.routes.js";
 import { reservationsRoutes } from "./modules/reservations/reservations.routes.js";
 import { cleaningRoutes } from "./modules/facility/cleaning.routes.js";
 import { reportsRoutes } from "./modules/reports/reports.routes.js";
+import { tablesRoutes } from "./modules/tables/tables.routes.js";
+import { menuRoutes } from "./modules/menu/menu.routes.js";
 import { monitorsJob } from "./scheduler/monitors.job.js";
 import { requireRole } from "./middleware/rbac.js";
 import { Role } from "@prisma/client";
@@ -85,6 +87,12 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Facility & Cleaning Routes (PRD 14)
   await app.register(cleaningRoutes, { prefix: "/api/v1/cleaning" });
+
+  // Floor Tables & Seating Management Routes (PRD 8)
+  await app.register(tablesRoutes, { prefix: "/api/v1/tables" });
+
+  // Menu, Categories & Availability Routes (PRD 7)
+  await app.register(menuRoutes, { prefix: "/api/v1/menu" });
 
   // Reporting, Analytics & Day Closure Routes (PRD 22)
   await app.register(reportsRoutes, { prefix: "/api/v1/reports" });
