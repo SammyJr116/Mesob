@@ -66,6 +66,8 @@ model Employee {
   userId                String?   @unique
   user                  User?
   orders                Order[]   @relation("WaiterOrders")
+  cleaningTasks         CleaningTask[]     @relation("CleanerTasks")
+  cleaningTemplates     CleaningTemplate[] @relation("CleanerTemplates")
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 }
@@ -602,20 +604,44 @@ model PurchaseRequestLine {
 // ---------------------------------------------------------
 
 model CleaningTask {
-  id           String    @id @default(cuid())
+  id           String            @id @default(cuid())
   area         String
   description  String?
   tableId      String?
-  table        Table?    @relation(fields: [tableId], references: [id])
+  table        Table?            @relation(fields: [tableId], references: [id])
   assignedToId String?
-  status       String    @default("Pending") // Pending, In Progress, Completed
-  source       String    @default("Table") // Table, Routine, Manual
+  assignedTo   Employee?         @relation("CleanerTasks", fields: [assignedToId], references: [id])
+  status       String            @default("Pending") // Pending, In Progress, Completed
+  source       String            @default("Table") // Table, Routine, Manual
   dueTime      DateTime?
+  startedAt    DateTime?
   completedAt  DateTime?
-  createdAt    DateTime  @default(now())
+  notes        String?           @db.Text
+  photoUrl     String?
+  templateId   String?
+  template     CleaningTemplate? @relation(fields: [templateId], references: [id])
+  createdAt    DateTime          @default(now())
 
   @@index([status])
   @@index([tableId])
+  @@index([assignedToId])
+}
+
+model CleaningTemplate {
+  id                 String         @id @default(cuid())
+  area               String         // Dining area, Kitchen, Restrooms, Storage, Entrance
+  taskName           String
+  description        String?        @db.Text
+  frequency          String         @default("Daily") // Daily, Weekly, Per Shift
+  preferredTime      String?        // e.g. "08:00"
+  assignedEmployeeId String?
+  assignedTo         Employee?      @relation("CleanerTemplates", fields: [assignedEmployeeId], references: [id])
+  isActive           Boolean        @default(true)
+  tasks              CleaningTask[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([isActive])
 }
 
 model Expense {

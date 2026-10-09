@@ -15,18 +15,30 @@ export class CleaningService {
   /**
    * Lists cleaning tasks with optional filters
    */
-  async listTasks(filters: { status?: string; area?: string; assignedToId?: string }) {
+  async listTasks(filters: { status?: string; area?: string; assignedToId?: string; source?: string }) {
     const where: any = {};
     if (filters.status) where.status = filters.status;
     if (filters.area) where.area = filters.area;
     if (filters.assignedToId) where.assignedToId = filters.assignedToId;
+    if (filters.source) where.source = filters.source;
 
-    return prisma.cleaningTask.findMany({
+    const tasks = await prisma.cleaningTask.findMany({
       where,
       include: {
         table: true,
+        assignedTo: true,
+        template: true,
       },
       orderBy: { createdAt: "desc" },
+    });
+
+    const now = new Date();
+    return tasks.map((t) => {
+      const isOverdue = t.status !== "Completed" && t.dueTime ? new Date(t.dueTime) < now : false;
+      return {
+        ...t,
+        isOverdue,
+      };
     });
   }
 
@@ -38,8 +50,11 @@ export class CleaningService {
     description?: string;
     tableId?: string;
     assignedToId?: string;
-    dueTime?: Date;
+    dueTime?: Date | string;
     source?: string;
+    templateId?: string;
+    notes?: string;
+    photoUrl?: string;
   }) {
     const task = await prisma.cleaningTask.create({
       data: {
@@ -47,11 +62,18 @@ export class CleaningService {
         description: data.description,
         tableId: data.tableId,
         assignedToId: data.assignedToId,
-        dueTime: data.dueTime,
+        dueTime: data.dueTime ? new Date(data.dueTime) : null,
         source: data.source || "Manual",
+        templateId: data.templateId,
+        notes: data.notes,
+        photoUrl: data.photoUrl,
         status: "Pending",
       },
-      include: { table: true },
+      include: {
+        table: true,
+        assignedTo: true,
+        template: true,
+      },
     });
 
     if (data.tableId && task.table) {
@@ -72,16 +94,25 @@ export class CleaningService {
       where: { id },
       data: {
         status: "In Progress",
+        startedAt: new Date(),
         assignedToId: task.assignedToId || cleanerId,
       },
-      include: { table: true },
+      include: {
+        table: true,
+        assignedTo: true,
+        template: true,
+      },
     });
   }
 
   /**
    * Cleaner completes task (PRD 14.4.1, 14.6.2)
    */
-  async completeTask(id: string, caller: { id: string; role: Role }) {
+  async completeTask(
+    id: string,
+    caller: { id: string; role: Role },
+    data?: { notes?: string; photoUrl?: string }
+  ) {
     const task = await prisma.cleaningTask.findUnique({ where: { id }, include: { table: true } });
     if (!task) throw new CleaningError("Task not found", 404);
 
@@ -90,11 +121,49 @@ export class CleaningService {
       data: {
         status: "Completed",
         completedAt: new Date(),
+        notes: data?.notes !== undefined ? data.notes : task.notes,
+        photoUrl: data?.photoUrl !== undefined ? data.photoUrl : task.photoUrl,
       },
-      include: { table: true },
+      include: {
+        table: true,
+        assignedTo: true,
+        template: true,
+      },
     });
 
     return updatedTask;
+  }
+
+  /**
+   * Manager reassigns a cleaning task (PRD 14.3.3)
+   */
+  async reassignTask(id: string, assignedToId: string, caller: { id: string; role: Role }) {
+    const task = await prisma.cleaningTask.findUnique({ where: { id } });
+    if (!task) throw new CleaningError("Task not found", 404);
+
+    const updated = await prisma.cleaningTask.update({
+      where: { id },
+      data: { assignedToId },
+      include: {
+        table: true,
+        assignedTo: true,
+        template: true,
+      },
+    });
+
+    const userExists = caller.id ? await prisma.user.findUnique({ where: { id: caller.id } }) : null;
+    await prisma.activityLog.create({
+      data: {
+        userId: userExists ? caller.id : null,
+        role: caller.role,
+        action: "CLEANING_TASK_REASSIGNED",
+        target: "CleaningTask",
+        targetId: task.id,
+        reason: `Reassigned cleaning task #${task.id} (${task.area}) to employee ${assignedToId}`,
+      },
+    });
+
+    return updated;
   }
 
   /**
@@ -150,6 +219,97 @@ export class CleaningService {
 
     emitTableUpdated(updatedTable);
     return updatedTable;
+  }
+
+  // -------------------------------------------------------------
+  // CLEANING TEMPLATES (PRD 14.2.1)
+  // -------------------------------------------------------------
+
+  async listTemplates() {
+    return prisma.cleaningTemplate.findMany({
+      include: { assignedTo: true },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async createTemplate(data: {
+    area: string;
+    taskName: string;
+    description?: string;
+    frequency?: string;
+    preferredTime?: string;
+    assignedEmployeeId?: string;
+  }) {
+    if (!data.area || !data.taskName) {
+      throw new CleaningError("Area and taskName are required", 400);
+    }
+
+    return prisma.cleaningTemplate.create({
+      data: {
+        area: data.area,
+        taskName: data.taskName,
+        description: data.description,
+        frequency: data.frequency || "Daily",
+        preferredTime: data.preferredTime,
+        assignedEmployeeId: data.assignedEmployeeId,
+      },
+      include: { assignedTo: true },
+    });
+  }
+
+  async updateTemplate(id: string, data: any) {
+    const template = await prisma.cleaningTemplate.findUnique({ where: { id } });
+    if (!template) throw new CleaningError("Template not found", 404);
+
+    return prisma.cleaningTemplate.update({
+      where: { id },
+      data,
+      include: { assignedTo: true },
+    });
+  }
+
+  async deleteTemplate(id: string) {
+    const template = await prisma.cleaningTemplate.findUnique({ where: { id } });
+    if (!template) throw new CleaningError("Template not found", 404);
+
+    return prisma.cleaningTemplate.delete({ where: { id } });
+  }
+
+  async runTemplate(id: string) {
+    const template = await prisma.cleaningTemplate.findUnique({
+      where: { id },
+      include: { assignedTo: true },
+    });
+    if (!template) throw new CleaningError("Template not found", 404);
+
+    // Calculate dueTime for today
+    let dueTime: Date | null = null;
+    if (template.preferredTime) {
+      const [h, m] = template.preferredTime.split(":").map(Number);
+      dueTime = new Date();
+      dueTime.setHours(h || 12, m || 0, 0, 0);
+    } else {
+      dueTime = new Date(Date.now() + 4 * 3600 * 1000); // 4 hours from now
+    }
+
+    const task = await prisma.cleaningTask.create({
+      data: {
+        area: template.area,
+        description: template.taskName + (template.description ? ` · ${template.description}` : ""),
+        assignedToId: template.assignedEmployeeId,
+        source: `Template · ${template.frequency}`,
+        templateId: template.id,
+        dueTime,
+        status: "Pending",
+      },
+      include: {
+        table: true,
+        assignedTo: true,
+        template: true,
+      },
+    });
+
+    return task;
   }
 }
 

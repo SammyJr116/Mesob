@@ -6,6 +6,7 @@ import { useRole } from "@/lib/RoleContext";
 import { ROLES } from "@/lib/roles";
 import { nextId, clockTime } from "@/lib/datetime";
 import { notifySuccess } from "@/lib/notify";
+import { cleaningApi } from "@/api/client";
 
 export default function TableQueue() {
   const { db, updateItem, insertItem } = useData();
@@ -17,11 +18,26 @@ export default function TableQueue() {
   const taskFor = (tableNumber) =>
     cleaningTasks.find((t) => t.type === "table" && t.area === `Table ${tableNumber}` && t.status !== "Completed");
 
-  const start = (t) => {
+  const start = async (t) => {
     const task = taskFor(t.number);
     if (task) {
+      try {
+        await cleaningApi.startTask(task.id);
+      } catch {
+        // Offline fallback
+      }
       updateItem("cleaningTasks", task.id, { status: "In Progress", assignee: me });
     } else {
+      try {
+        await cleaningApi.createTask({
+          area: `Table ${t.number}`,
+          description: "Clean & reset table",
+          tableId: t.id,
+          source: "Table",
+        });
+      } catch {
+        // Offline fallback
+      }
       insertItem("cleaningTasks", {
         id: nextId(cleaningTasks, "CL", 2),
         area: `Table ${t.number}`,
@@ -37,9 +53,25 @@ export default function TableQueue() {
     notifySuccess(`Table ${t.number} started`);
   };
 
-  const release = (t) => {
+  const release = async (t) => {
     const task = taskFor(t.number);
-    if (task) updateItem("cleaningTasks", task.id, { status: "Completed", assignee: task.assignee === "Unassigned" ? me : task.assignee, completedAt: clockTime() });
+    if (task) {
+      try {
+        await cleaningApi.completeTask(task.id);
+      } catch {
+        // Offline fallback
+      }
+      updateItem("cleaningTasks", task.id, {
+        status: "Completed",
+        assignee: task.assignee === "Unassigned" ? me : task.assignee,
+        completedAt: clockTime(),
+      });
+    }
+    try {
+      await cleaningApi.markTableAvailable(t.id);
+    } catch {
+      // Offline fallback
+    }
     updateItem("tables", t.id, { status: "Available", order: null, cleaner: null });
     notifySuccess(`Table ${t.number} released`);
   };

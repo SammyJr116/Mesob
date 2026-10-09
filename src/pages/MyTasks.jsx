@@ -9,6 +9,7 @@ import { ROLES } from "@/lib/roles";
 import { clockTime } from "@/lib/datetime";
 import { notifySuccess } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { cleaningApi, securityApi } from "@/api/client";
 
 export default function MyTasks() {
   const navigate = useNavigate();
@@ -24,12 +25,25 @@ export default function MyTasks() {
   const tasks = cleaningTasks.filter((t) => t.assignee === me || t.assignee === "Tigist" || t.assignee === "Solomon" || t.assignee === "Unassigned");
   const overdue = tasks.filter((t) => t.status === "Overdue").length;
 
-  const start = (t) => {
+  const start = async (t) => {
+    try {
+      await cleaningApi.startTask(t.id);
+    } catch {
+      // Offline fallback
+    }
     updateItem("cleaningTasks", t.id, { status: "In Progress", assignee: me });
     notifySuccess(`${t.task} started`);
   };
 
-  const complete = (t) => {
+  const complete = async (t) => {
+    try {
+      await cleaningApi.completeTask(t.id, {
+        notes: notes[t.id] || "",
+        photoUrl: photo[t.id] || "",
+      });
+    } catch {
+      // Offline fallback
+    }
     updateItem("cleaningTasks", t.id, {
       status: "Completed",
       completedAt: clockTime(),
@@ -100,7 +114,17 @@ export default function MyTasks() {
       {reportFor && (
         <ReportIssueModal
           onClose={() => setReportFor(null)}
-          onSubmit={(what, detail) => {
+          onSubmit={async (what, detail) => {
+            try {
+              await securityApi.reportIncident({
+                category: "Facility",
+                title: what,
+                description: `${what} · ${reportFor.area}${detail ? ` · ${detail}` : ""}`,
+                location: reportFor.area,
+              });
+            } catch {
+              // Offline fallback
+            }
             insertItem("incidents", {
               id: `IN-${Date.now()}`,
               reportedBy: me,

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useRole } from "@/lib/RoleContext";
 import { useData } from "@/lib/DataContext";
+import { notificationsApi } from "@/api/client";
 import CommandPalette from "@/components/CommandPalette";
 import { MesobIcon } from "@/components/HabeshaDecorations";
 import { cn } from "@/lib/utils";
@@ -88,9 +89,30 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [serverUnread, setServerUnread] = useState(null);
   const { db } = useData();
   const { restaurant, notifications } = db;
   const nav = NAV_BY_ROLE[role] || [];
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsApi.list({ unreadOnly: "true" });
+        if (mounted && res && typeof res.unreadCount === "number") {
+          setServerUnread(res.unreadCount);
+        }
+      } catch {
+        // Fallback to local DataContext
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -102,7 +124,7 @@ export default function Layout({ children }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = serverUnread !== null ? serverUnread : notifications.filter((n) => !n.read).length;
   const isActive = (to) => location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
   const isPhoneRole = role === "cleaner" || role === "security";
 

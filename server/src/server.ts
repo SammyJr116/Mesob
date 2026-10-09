@@ -26,6 +26,7 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import { customersRoutes } from "./modules/customers/customers.routes.js";
 import { settingsRoutes } from "./modules/settings/settings.routes.js";
 import { auditRoutes } from "./modules/audit/audit.routes.js";
+import { notificationsRoutes } from "./modules/notifications/notifications.routes.js";
 import { monitorsJob } from "./scheduler/monitors.job.js";
 import { requireRole } from "./middleware/rbac.js";
 import { Role } from "@prisma/client";
@@ -132,6 +133,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Activity Log Audit Trail Routes (PRD 4.8)
   await app.register(auditRoutes, { prefix: "/api/v1/activity-logs" });
+
+  // In-App Notification Center Routes (PRD 20)
+  await app.register(notificationsRoutes, { prefix: "/api/v1/notifications" });
 
   // Example Protected RBAC Route for Testing (PRD 3.3)
   app.get(

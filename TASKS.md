@@ -657,7 +657,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 9.1 Routine Facility Cleaning & Overdue Automation (PRD Section 14)
 *Priority: P1 | Target: `server/src/modules/facility/`, `server/src/scheduler/cleaning.job.ts`, `src/pages/Cleaning.jsx`, `src/pages/MyTasks.jsx`*
 
-- [ ] **Task 9.1.1: Cleaning Templates & Routine Task Scheduler**
+- [x] **Task 9.1.1: Cleaning Templates & Routine Task Scheduler**
   - **Files**: `server/prisma/schema.prisma`, `server/src/modules/facility/cleaning-templates.routes.ts`, `server/src/scheduler/cleaning.job.ts`
   - **Spec**: PRD 14.1, 14.2, 4.9.
   - **Logic**:
@@ -666,7 +666,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Scheduled Job: Runs at shift start / daily; generates `CleaningTask` records with `source = "Routine"`, copies checklist and preferred time.
   - **Done When**: Routine cleaning tasks auto-generate on schedule; templates manageable by Manager.
 
-- [ ] **Task 9.1.2: Overdue Cleaning Monitor & Cleaner Queue Dispatch**
+- [x] **Task 9.1.2: Overdue Cleaning Monitor & Cleaner Queue Dispatch**
   - **Files**: `server/src/scheduler/cleaning.job.ts`, `server/src/modules/facility/cleaning.service.ts`
   - **Spec**: PRD 14.3, 14.5.
   - **Logic**:
@@ -674,7 +674,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Alerts: Emits WebSocket event `cleaning:overdue` to `room:cleaner` and `room:manager`; creates persistent Notification: *"Cleaning task overdue: <area>"*.
   - **Done When**: Tasks past due time trigger overdue alerts to cleaner and manager.
 
-- [ ] **Task 9.1.3: Cleaner Tasks & Facility Checklist Frontend Integration**
+- [x] **Task 9.1.3: Cleaner Tasks & Facility Checklist Frontend Integration**
   - **Files**: [`src/pages/Cleaning.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Cleaning.jsx), [`src/pages/MyTasks.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/MyTasks.jsx), [`src/pages/TableQueue.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/TableQueue.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 14.3, 14.4.
   - **UI Controls**:
@@ -687,7 +687,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 9.2 In-App Notification Center & Event Delivery (PRD Section 20)
 *Priority: P1 | Target: `server/src/modules/notifications/`, `src/pages/Notifications.jsx`*
 
-- [ ] **Task 9.2.1: Persistent Notifications REST API & Mark-Read Handlers**
+- [x] **Task 9.2.1: Persistent Notifications REST API & Mark-Read Handlers**
   - **Files**: `server/src/modules/notifications/notifications.routes.ts`, `server/src/modules/notifications/notifications.service.ts`
   - **Spec**: PRD 20.1, 20.3.
   - **Logic**:
@@ -697,7 +697,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Retention Cleanup: Scheduled job archives / deletes notifications older than 30 days (PRD 20.1.1).
   - **Done When**: Users receive only role/user-scoped notifications; mark-read and read-all update database.
 
-- [ ] **Task 9.2.2: Notification Bell, Dropdown & Sound Preferences Integration**
+- [x] **Task 9.2.2: Notification Bell, Dropdown & Sound Preferences Integration**
   - **Files**: [`src/pages/Notifications.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Notifications.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 20.1, 20.2.
   - **UI Controls**:

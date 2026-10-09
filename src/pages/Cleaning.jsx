@@ -9,6 +9,7 @@ import { visibleCleaningTasks } from "@/lib/scope";
 import { nextId, clockTime } from "@/lib/datetime";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { cleaningApi } from "@/api/client";
 
 export default function Cleaning() {
   const { db, insertItem, updateItem } = useData();
@@ -33,7 +34,12 @@ export default function Cleaning() {
   );
   const { pending, overdue, inProgress } = buckets;
 
-  const complete = (t) => {
+  const complete = async (t) => {
+    try {
+      await cleaningApi.completeTask(t.id);
+    } catch {
+      // Offline fallback
+    }
     updateItem("cleaningTasks", t.id, { status: "Completed", completedAt: clockTime() });
     // Completing a table-clean is what actually frees the table.
     if (t.type === "table") {
@@ -46,7 +52,12 @@ export default function Cleaning() {
     notifySuccess(`${t.task} completed`);
   };
 
-  const start = (t) => {
+  const start = async (t) => {
+    try {
+      await cleaningApi.startTask(t.id);
+    } catch {
+      // Offline fallback
+    }
     updateItem("cleaningTasks", t.id, { status: "In Progress" });
     notifySuccess(`${t.task} started`);
   };
@@ -106,7 +117,12 @@ export default function Cleaning() {
                   </div>
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        try {
+                          await cleaningApi.runTemplate(t.id);
+                        } catch {
+                          // Offline fallback
+                        }
                         insertItem("cleaningTasks", {
                           id: nextId(cleaningTasks, "CL", 2),
                           area: t.area,
@@ -121,7 +137,18 @@ export default function Cleaning() {
                       }}
                       className="btn-outline text-xs"
                     >Run now</button>
-                    <button onClick={() => updateItem("cleaningTemplates", t.id, { frequency: t.frequency === "Daily" ? "Weekly" : "Daily" })} className="btn-ghost text-xs">Toggle frequency</button>
+                    <button
+                      onClick={async () => {
+                        const newFreq = t.frequency === "Daily" ? "Weekly" : "Daily";
+                        try {
+                          await cleaningApi.updateTemplate(t.id, { frequency: newFreq });
+                        } catch {
+                          // Offline fallback
+                        }
+                        updateItem("cleaningTemplates", t.id, { frequency: newFreq });
+                      }}
+                      className="btn-ghost text-xs"
+                    >Toggle frequency</button>
                   </div>
                 </div>
               ))}
@@ -135,10 +162,19 @@ export default function Cleaning() {
           areas={managedLists.cleaningAreas}
           tables={tables.map((t) => t.number)}
           onClose={() => setShowTask(false)}
-          onCreate={(draft) => {
+          onCreate={async (draft) => {
             if (!draft.task.trim() || !draft.area) {
               notifyError("Task needs a name and an area");
               return;
+            }
+            try {
+              await cleaningApi.createTask({
+                area: draft.area,
+                description: draft.task.trim(),
+                assignedToId: draft.assignee.trim() || undefined,
+              });
+            } catch {
+              // Offline fallback
             }
             insertItem("cleaningTasks", {
               id: nextId(cleaningTasks, "CL", 2),
@@ -159,7 +195,17 @@ export default function Cleaning() {
         <NewTemplateModal
           areas={managedLists.cleaningAreas}
           onClose={() => setShowTemplate(false)}
-          onCreate={(draft) => {
+          onCreate={async (draft) => {
+            try {
+              await cleaningApi.createTemplate({
+                area: draft.area,
+                taskName: draft.task,
+                frequency: draft.frequency,
+                preferredTime: draft.due,
+              });
+            } catch {
+              // Offline fallback
+            }
             insertItem("cleaningTemplates", { id: nextId(cleaningTemplates, "CT", 2), ...draft });
             notifySuccess("Template saved");
             setShowTemplate(false);

@@ -142,10 +142,19 @@ export const reservationsApi = {
 
 export const cleaningApi = {
   listTasks: (params) => api.get("/cleaning/tasks", params),
+  createTask: (data) => api.post("/cleaning/tasks", data),
   startTask: (taskId) => api.patch(`/cleaning/tasks/${taskId}/start`, {}),
-  completeTask: (taskId, notes) => api.patch(`/cleaning/tasks/${taskId}/complete`, { notes }),
+  completeTask: (taskId, data) =>
+    api.patch(`/cleaning/tasks/${taskId}/complete`, typeof data === "string" ? { notes: data } : data || {}),
+  reassignTask: (taskId, assignedToId) =>
+    api.patch(`/cleaning/tasks/${taskId}/reassign`, { assignedToId }),
   markTableAvailable: (tableId, force = false, overrideReason = "") =>
     api.post(`/cleaning/tables/${tableId}/mark-available`, { force, overrideReason }),
+  listTemplates: () => api.get("/cleaning/templates"),
+  createTemplate: (data) => api.post("/cleaning/templates", data),
+  updateTemplate: (id, data) => api.patch(`/cleaning/templates/${id}`, data),
+  deleteTemplate: (id) => api.delete(`/cleaning/templates/${id}`),
+  runTemplate: (id) => api.post(`/cleaning/templates/${id}/run`, {}),
 };
 
 export const reportsApi = {
@@ -248,5 +257,14 @@ export const auditApi = {
   grantBackEntry: (data) => api.post("/auth/back-entry-grant", data),
   checkBackEntry: () => api.get("/auth/back-entry-grant"),
 };
+
+export const notificationsApi = {
+  list: (params) => api.get("/notifications", params),
+  markRead: (id) => api.patch(`/notifications/${id}/read`, {}),
+  markAllRead: () => api.post("/notifications/read-all", {}),
+  create: (data) => api.post("/notifications", data),
+  cleanup: (days = 30) => api.post(`/notifications/cleanup?days=${days}`, {}),
+};
+
 
 
