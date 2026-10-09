@@ -376,3 +376,334 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
   - Verify Recipe Depletion, Low Stock alerts, and Purchase Approvals.
 - [x] **Task 6.2.3: Stage 3 Acceptance Suite** [PRD 25.4.3]
   - Verify Reservation overlap blocking, Day Auto-Close at 04:00 AM, and Reports exports.
+
+---
+
+## Phase 7 — Operations & Facility: Expenses, Maintenance & Security (PRD Sections 17, 18, 19)
+
+### 7.1 Expenses Management Engine (PRD Section 17)
+*Priority: P1 | Target: `server/src/modules/expenses/`, `server/src/scheduler/recurring-expenses.job.ts`, `src/pages/Expenses.jsx`*
+
+- [ ] **Task 7.1.1: Expense REST Endpoints & Scoped Permissions**
+  - **Files**: `server/src/modules/expenses/expenses.routes.ts`, `server/src/modules/expenses/expenses.service.ts`
+  - **Spec**: PRD 17.1, 17.2, 3.3.
+  - **Logic**:
+    - `POST /api/v1/expenses`: Manager and Inventory Staff only. Inventory Staff auto-sets `recordedById = user.id`, status = `Confirmed`. Validates `amount > 0`. Category must not be `"Emergency purchase"` (PRD 17.4.1).
+    - `GET /api/v1/expenses`: Query with filters (`from`, `to`, `category`, `status`). Scoped by role: Inventory Staff sees only their own entries (`recordedById == user.id`), Manager sees all.
+    - `PATCH /api/v1/expenses/:id`: Manager only. Allows editing description, amount, category. Logs old vs new values to `ActivityLog` (PRD 17.2.2).
+    - `DELETE /api/v1/expenses/:id`: Hard-blocked (returns 403: *"Expenses are never deleted"* - PRD 17.2.2, 4.6.1).
+  - **Done When**: Inventory staff can only view/create own records; Manager can view/edit any with activity log; delete attempts fail with 403.
+
+- [ ] **Task 7.1.2: Recurring Expense Templates & Automated Generation Job**
+  - **Files**: `server/prisma/schema.prisma`, `server/src/modules/expenses/recurring-expenses.routes.ts`, `server/src/scheduler/recurring-expenses.job.ts`
+  - **Spec**: PRD 17.3, 4.9.
+  - **Logic**:
+    - Schema: Add `RecurringExpenseTemplate` (`category`, `description`, `amount`, `period` [Weekly, Monthly], `dayOfWeek`, `dayOfMonth`, `isActive`).
+    - Endpoints: `GET /api/v1/expenses/templates`, `POST /templates`, `PATCH /templates/:id` (Manager only).
+    - Daily Scheduled Job: Checks active templates. If today matches recurrence schedule, creates a new `Expense` entry with `status = "Pending confirmation"` and template amount. Emits notification to Manager: *"Recurring expense pending confirmation: <description>"*.
+    - Confirmation Endpoint: `PATCH /api/v1/expenses/:id/confirm` (Manager only) updates actual amount and sets `status = "Confirmed"`.
+  - **Done When**: Cron job creates "Pending confirmation" expense entries; confirming makes them visible in financial reports.
+
+- [ ] **Task 7.1.3: Expenses Frontend UI & Client Integration**
+  - **Files**: [`src/pages/Expenses.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Expenses.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 17.5.
+  - **UI Controls**:
+    - Expenses table with search, category filter, date picker, status filter.
+    - Top StatCards: Total Confirmed Expenses this month, Pending Confirmations count, Top Expense Category.
+    - Modal `"Record Expense"`: Category dropdown, amount input, date picker, description textarea, receipt URL input.
+    - Manager controls: `"Confirm"` badge button on pending entries with amount edit modal; `"Edit"` button on confirmed entries; `"Recurring Templates"` tab. Remove hard-delete button to align with PRD 17.2.2.
+    - Wire `expensesApi` into `client.js` (`list`, `create`, `update`, `confirm`, `listTemplates`, `createTemplate`).
+  - **Done When**: Expenses page displays real database records; Inventory staff sees only their records; Manager can confirm recurring expenses.
+
+### 7.2 Equipment & Preventive Maintenance Engine (PRD Section 18)
+*Priority: P1 | Target: `server/src/modules/maintenance/`, `server/src/scheduler/maintenance.job.ts`, `src/pages/Maintenance.jsx`*
+
+- [ ] **Task 7.2.1: Asset Registry Data Model & REST Endpoints**
+  - **Files**: `server/prisma/schema.prisma`, `server/src/modules/maintenance/assets.routes.ts`, `server/src/modules/maintenance/assets.service.ts`
+  - **Spec**: PRD 18.1, 3.3.
+  - **Logic**:
+    - Schema: Add `Asset` (`name`, `category`, `serialNumber`, `purchaseDate`, `warrantyExpiryDate`, `location`, `status` [Active, Under Maintenance, Out of Service, Retired], `notes`).
+    - Endpoints: `GET /api/v1/assets`, `POST /api/v1/assets`, `PATCH /api/v1/assets/:id` (Manager only).
+    - Status Rules: Assets cannot be hard-deleted; soft status transition to `Retired` (PRD 18.1.1).
+  - **Done When**: Manager can register and update equipment assets; retired assets are preserved; non-managers forbidden.
+
+- [ ] **Task 7.2.2: Maintenance Request Workflow, Costs & Deletion Safeguards**
+  - **Files**: `server/src/modules/maintenance/maintenance.routes.ts`, `server/src/modules/maintenance/maintenance.service.ts`
+  - **Spec**: PRD 18.2, 18.3, 18.6, 18.7.
+  - **Logic**:
+    - `POST /api/v1/maintenance/requests`: Open to ANY staff via "Report an issue" form (`assetId` optional, `problem`, `priority` [Low, Medium, High, Critical], `description`).
+    - `GET /api/v1/maintenance/requests`: Manager sees all; other staff see own reported issues.
+    - `PATCH /api/v1/maintenance/requests/:id`: Manager only. Assign to internal employee (`assignedTo`) OR external vendor (`vendorName`, `vendorPhone` text); transition status (`Reported` -> `Assigned` -> `In Progress` -> `Completed`); record resolution `cost` and notes.
+    - `DELETE /api/v1/maintenance/requests/:id`: Manager only. If `cost > 0`, reject with 400: *"Cannot delete maintenance requests with recorded costs. Archive only."* (PRD 18.7.1). If `cost === 0`, allow deletion and log to `ActivityLog`.
+  - **Done When**: Staff can report issues; Manager assigns and records costs; deleting request with cost is blocked while cost-free can be deleted.
+
+- [ ] **Task 7.2.3: Warranty Expiry Alerts & Preventive Maintenance Scheduler**
+  - **Files**: `server/prisma/schema.prisma`, `server/src/scheduler/maintenance.job.ts`
+  - **Spec**: PRD 18.4, 18.5, 4.9.
+  - **Logic**:
+    - Schema: Add `PreventiveMaintenanceTemplate` (`assetId`, `taskName`, `frequencyDays`, `assignedTo`, `nextDueDate`, `isActive`).
+    - Warranty Alert Job: Runs daily. Checks assets where `warrantyExpiryDate` is between now and now + 30 days. Emits notification to Manager: *"Asset <name> warranty expires in <X> days"*.
+    - Preventive Maintenance Job: Runs daily. Checks templates where `nextDueDate <= now`. Automatically creates a `MaintenanceRequest` (priority `Medium`, title `[Preventive] <taskName>`), advances `nextDueDate = now + frequencyDays`, notifies Manager.
+  - **Done When**: Scheduled job triggers warranty alert 30 days prior and generates recurring maintenance requests.
+
+- [ ] **Task 7.2.4: Maintenance & Assets Frontend UI Integration**
+  - **Files**: [`src/pages/Maintenance.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Maintenance.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 18.2, 18.5.
+  - **UI Controls**:
+    - Tabs: `"Requests"` and `"Asset Registry"`.
+    - Priority pills including Critical (red), status badges, assignee, cost display.
+    - Manager modal `"Manage Request"`: Assign to staff/vendor, update status, record cost.
+    - `"Add Asset"` modal for Manager with warranty date picker and category.
+    - Wire `maintenanceApi` into `client.js` (`listRequests`, `createRequest`, `updateRequest`, `deleteRequest`, `listAssets`, `createAsset`, `updateAsset`).
+  - **Done When**: Maintenance page manages assets and requests against server; cost-bearing requests protect from deletion in UI.
+
+### 7.3 Security Records & Incident Lifecycle (PRD Section 19)
+*Priority: P1 | Target: `server/src/modules/security/`, `src/pages/Visitors.jsx`, `src/pages/Incidents.jsx`, `src/pages/LostFound.jsx`*
+
+- [ ] **Task 7.3.1: Visitor Log Endpoints & Check-Out Tracking**
+  - **Files**: `server/src/modules/security/visitors.routes.ts`, `server/src/modules/security/visitors.service.ts`
+  - **Spec**: PRD 19.1, 3.3.
+  - **Logic**:
+    - `POST /api/v1/security/visitors`: Security and Manager. Fields: `name`, `phone`, `purpose`, `personVisited`, `badgeNumber` optional, `checkInTime`. Strictly NO ID numbers, NO vehicle plates (PRD 19.1.2).
+    - `GET /api/v1/security/visitors`: Security and Manager only.
+    - `PATCH /api/v1/security/visitors/:id/checkout`: Sets `checkOutTime = now()`.
+    - `DELETE /api/v1/security/visitors/:id`: Manager only (PRD 19.1.3). Logs to `ActivityLog`.
+  - **Done When**: Security can check in/out visitors; Manager can view/delete; other roles receive 403 Forbidden.
+
+- [ ] **Task 7.3.2: Incident Management & Manager Resolution Workflow**
+  - **Files**: `server/src/modules/security/incidents.routes.ts`, `server/src/modules/security/incidents.service.ts`
+  - **Spec**: PRD 19.2, 3.3, 4.6.3.
+  - **Logic**:
+    - `POST /api/v1/security/incidents`: Any staff via issue reporter, or Security directly. Fields: `category`, `title`, `severity` [Low, Medium, High, Critical], `description`, `location`, `peopleInvolved`, `occurredAt`. Status starts as `Reported`.
+    - `GET /api/v1/security/incidents`: Security and Manager only.
+    - `PATCH /api/v1/security/incidents/:id/review`: Security or Manager moves status to `Under Review`.
+    - `PATCH /api/v1/security/incidents/:id/resolve`: Manager ONLY. Requires `resolutionNotes`. Status becomes `Resolved`, `resolvedAt = now()`.
+    - `DELETE /api/v1/security/incidents/:id`: Strictly blocked (403: *"Incidents are archive-only and never deleted"* - PRD 19.2.4).
+  - **Done When**: Incidents transition Reported -> Under Review -> Resolved by Manager with resolution notes; deletion rejected.
+
+- [ ] **Task 7.3.3: Lost & Found Register & Claim Verification**
+  - **Files**: `server/src/modules/security/lost-found.routes.ts`, `server/src/modules/security/lost-found.service.ts`
+  - **Spec**: PRD 19.3, 3.3, 4.6.2.
+  - **Logic**:
+    - `POST /api/v1/security/lost-found`: Security and Manager. Fields: `itemDescription`, `locationFound`, `foundAt`. Status = `Found`.
+    - `GET /api/v1/security/lost-found`: Security and Manager.
+    - `PATCH /api/v1/security/lost-found/:id/claim`: Security or Manager. Requires `claimantName`, `claimantPhone`. Sets status to `Claimed`, `claimedAt = now()`.
+    - `DELETE /api/v1/security/lost-found/:id`: Manager only (PRD 19.3.3). Logs to `ActivityLog`.
+  - **Done When**: Lost items recorded; claiming requires claimant name & phone; Manager can delete; others blocked.
+
+- [ ] **Task 7.3.4: Security Role Frontend UI & Privacy Gating**
+  - **Files**: [`src/pages/Visitors.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Visitors.jsx), [`src/pages/Incidents.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Incidents.jsx), [`src/pages/LostFound.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/LostFound.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 19.4, 3.5.
+  - **UI Controls**:
+    - `Visitors.jsx`: Active visitors count, Check-in modal, Check-out button, Manager-only Delete button.
+    - `Incidents.jsx`: Severity pills, Filter by status, "Under Review" transition button, Manager "Resolve Incident" modal with notes textarea.
+    - `LostFound.jsx`: "Record Lost Item" modal, "Claim Item" modal with claimant verification inputs.
+    - Wire `securityApi` into `client.js` (`visitors`, `incidents`, `lostFound`).
+  - **Done When**: Pages display live data; Privacy gating blocks unauthorized roles; check-in/claim/resolve flows work end-to-end.
+
+---
+
+## Phase 8 — Administration, Staffing & Compliance (PRD Sections 5, 6, 12, 4.5, 4.8)
+
+### 8.1 Employee Records & User Administration (PRD Section 6)
+*Priority: P0 | Target: `server/src/modules/employees/`, `server/src/modules/users/`, `src/pages/Employees.jsx`, `src/pages/Users.jsx`*
+
+- [ ] **Task 8.1.1: Employee Directory CRUD & Employee Number Sequence**
+  - **Files**: `server/src/modules/employees/employees.routes.ts`, `server/src/modules/employees/employees.service.ts`
+  - **Spec**: PRD 6.1, 6.3, 3.3. Manager only (`requireRole(Role.MANAGER)`).
+  - **Logic**:
+    - `POST /api/v1/employees`: Auto-generates next `employeeNumber` (`EMP-001`, `EMP-002` via `NumberSequence`). Fields: `name`, `role`, `phone`, `email`, `nationalId`, `status` [Active, On Leave, Terminated], `joinedDate`.
+    - `GET /api/v1/employees`: Search by name/phone, filter by role/status.
+    - `PATCH /api/v1/employees/:id`: Update employee info or status. Setting `Terminated` automatically sets linked User account `status = SUSPENDED` (PRD 6.7).
+    - `DELETE /api/v1/employees/:id`: If employee has linked orders or transactions, block deletion (archive-only, PRD 4.6.1).
+  - **Done When**: Creating employee auto-increments EMP-XXX; setting Terminated deactivates linked user account; active transactions block deletion.
+
+- [ ] **Task 8.1.2: Administrator User Management & Password Reset Workflow**
+  - **Files**: `server/src/modules/users/users.routes.ts`, `server/src/modules/users/users.service.ts`
+  - **Spec**: PRD 6.2, 6.5, 3.3. Administrator only (`requireRole(Role.ADMIN)`).
+  - **Logic**:
+    - `GET /api/v1/users`: List users with status (Active, Suspended, Locked), role, linked employee name.
+    - `POST /api/v1/users`: Create user account. Validate unique username/email, minimum 8 characters password, hash with bcrypt/argon2, link `employeeId` optional.
+    - `PATCH /api/v1/users/:id/status`: Suspend or Activate user. Suspended users cannot log in (PRD 4.11.10).
+    - `POST /api/v1/users/:id/reset-password`: Sets temporary password and flags `mustChangePassword = true` (PRD 6.2).
+    - `POST /api/v1/users/:id/unlock`: Clears lockout (`failedAttempts = 0`, `lockedUntil = null`).
+  - **Done When**: Only Admin can access `/api/v1/users`; password resets enforce `mustChangePassword`; locked accounts can be unlocked.
+
+- [ ] **Task 8.1.3: User Profile & Self-Service Password Change**
+  - **Files**: `server/src/modules/auth/auth.routes.ts`, [`src/pages/Profile.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Profile.jsx)
+  - **Spec**: PRD 3.2.8, 6.4. All authenticated users.
+  - **Logic**:
+    - `GET /api/v1/auth/me`: Current user info + employee details.
+    - `PATCH /api/v1/auth/profile`: Update own contact phone/email.
+    - `POST /api/v1/auth/change-password`: Requires `currentPassword` and `newPassword` (min 8 chars). Verifies current password before updating; sets `mustChangePassword = false`.
+  - **Done When**: User can verify old password and update to new password; invalid old password returns 400.
+
+- [ ] **Task 8.1.4: Staff Management Frontend Integration**
+  - **Files**: [`src/pages/Employees.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Employees.jsx), [`src/pages/Users.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Users.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 6.1, 6.2.
+  - **UI Controls**:
+    - `Employees.jsx`: Manager-only view. Add employee modal with phone/national ID, Edit modal, Status dropdown (Active, On Leave, Terminated). Remove hard-delete action for referenced employees.
+    - `Users.jsx`: Admin-only view. User table with status badge, Create user modal, Reset password dialog displaying temporary password, Unlock button calling server unlock.
+    - Wire `employeesApi` and `usersApi` into `client.js`.
+  - **Done When**: Manager manages employees; Admin manages users; UI updates backend directly.
+
+### 8.2 Customer Directory & Order History Engine (PRD Section 12)
+*Priority: P1 | Target: `server/src/modules/customers/`, `src/pages/Customers.jsx`*
+
+- [ ] **Task 8.2.1: Customer Search, Lookup & Aggregated History Endpoints**
+  - **Files**: `server/src/modules/customers/customers.routes.ts`, `server/src/modules/customers/customers.service.ts`
+  - **Spec**: PRD 12.1, 12.2, 12.3. Waiter and Manager.
+  - **Logic**:
+    - `GET /api/v1/customers/lookup?phone=09...`: Fast search by phone prefix or name for auto-complete in takeaway orders and reservations.
+    - `GET /api/v1/customers`: List customers with order count, reservation count, total spend (ETB), last visit date.
+    - `GET /api/v1/customers/:id`: Detailed profile with past order history, past reservations, notes / dietary restrictions.
+    - `POST /api/v1/customers`: Create customer record (`name`, `phone`, `email` optional, `notes`). Phone must be unique.
+    - `PATCH /api/v1/customers/:id`: Update customer details or notes.
+  - **Done When**: Phone lookup responds under 100ms; customer detail aggregates total spend and order history accurately.
+
+- [ ] **Task 8.2.2: Customer Profile Merging Transaction**
+  - **Files**: `server/src/modules/customers/customers.service.ts`, `server/src/modules/customers/customers.routes.ts`
+  - **Spec**: PRD 12.4. Manager only.
+  - **Logic**:
+    - `POST /api/v1/customers/merge`: Body `{ sourceCustomerId, targetCustomerId }`.
+    - In a database transaction:
+      - Re-points all `Order` records from source to target.
+      - Re-points all `Reservation` records from source to target.
+      - Appends source customer's notes to target customer.
+      - Marks source customer as archived.
+      - Logs to `ActivityLog`: *"Merged customer <source> into <target>"*.
+  - **Done When**: Merging moves all orders and reservations to target profile without data loss; logged to activity log.
+
+- [ ] **Task 8.2.3: Customers Directory Frontend UI Integration**
+  - **Files**: [`src/pages/Customers.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Customers.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 12.3, 12.4.
+  - **UI Controls**:
+    - Customer search bar by phone/name, customer cards showing Visits, Total Spend (ETB), Last Visit, Notes.
+    - Customer Detail Drawer showing order history, past reservations, and editable notes.
+    - Manager-only `"Merge Customer"` button opening duplicate selection modal.
+    - Wire `customersApi` into `client.js` (`lookup`, `list`, `getById`, `create`, `update`, `merge`).
+  - **Done When**: Customers page renders database records; Waiter can search customer during order creation; Manager can merge profiles.
+
+### 8.3 System Settings & Business Profile Configuration (PRD Section 5)
+*Priority: P1 | Target: `server/src/modules/settings/`, `src/pages/Settings.jsx`*
+
+- [ ] **Task 8.3.1: Settings API Endpoints & Operational Parameters**
+  - **Files**: `server/src/modules/settings/settings.routes.ts`, `server/src/modules/settings/settings.service.ts`
+  - **Spec**: PRD 5.1, 5.2, 5.4, 5.5, 5.7. Manager only (`requireRole(Role.MANAGER)`).
+  - **Logic**:
+    - `GET /api/v1/settings`: Returns restaurant profile, TIN, VAT rate, service charge rate, closing time, delayed ticket minutes, low stock threshold, inventory tracking boolean.
+    - `PATCH /api/v1/settings`: Update settings fields.
+    - Audit: Any change to `vatRate`, `serviceChargeRate`, `tin`, `closingTime`, or `inventoryTracking` writes to `ActivityLog` with old and new values (PRD 5.1.1).
+  - **Done When**: Manager can update settings; non-managers get 403; changes write audit log entries with old vs new values.
+
+- [ ] **Task 8.3.2: Payment Methods & Reference Requirements Configuration**
+  - **Files**: `server/prisma/schema.prisma`, `server/src/modules/settings/payment-methods.routes.ts`
+  - **Spec**: PRD 5.3.
+  - **Logic**:
+    - Schema: Model `PaymentMethodConfig` (`name`, `referenceRequired`, `isActive`, `orderIndex`).
+    - Endpoints: `GET /api/v1/settings/payment-methods`, `POST /methods`, `PATCH /methods/:id`.
+    - Defaults: Cash (reference optional), Telebirr (reference required), CBE Birr (reference required), Card (reference optional).
+    - Billing Enforcer: When recording order payment, validates if selected method requires reference; if required and reference empty, rejects with 400 (PRD 5.3.2).
+  - **Done When**: Payment methods configurable; payment engine rejects missing reference for Telebirr/CBE Birr.
+
+- [ ] **Task 8.3.3: Settings Frontend UI & Server Synchronization**
+  - **Files**: [`src/pages/Settings.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Settings.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 5.1 - 5.7.
+  - **UI Controls**:
+    - Form sections: Restaurant Profile (TIN, Name, Address, Phone, Invoice Footer), Financial Rates (VAT %, Service Charge %), Operational Timers (Day Close Time, Delayed Ticket Minutes, Low Stock Threshold), Inventory Tracking Switch, Payment Methods table.
+    - Save button with confirmation modal and success toast.
+    - Wire `settingsApi` into `client.js` (`get`, `update`, `listPaymentMethods`, `updatePaymentMethod`).
+  - **Done When**: Settings form loads server settings on mount; submitting updates database and reflects across application.
+
+### 8.4 Activity Log Audit Trail & Outage Back-Entry Engine (PRD Sections 4.5, 4.8)
+*Priority: P0 | Target: `server/src/modules/audit/`, `server/src/middleware/back-entry.ts`, `src/pages/ActivityLog.jsx`*
+
+- [ ] **Task 8.4.1: Activity Log Querying, Filtering & CSV Streaming**
+  - **Files**: `server/src/modules/audit/audit.routes.ts`, `server/src/modules/audit/audit.service.ts`
+  - **Spec**: PRD 4.8, 3.3. Manager only (`requireRole(Role.MANAGER)`).
+  - **Logic**:
+    - `GET /api/v1/activity-logs`: Paginated query with filters by `action` (discounts, cancels, price changes, lockouts, day close, back-entry), `role`, `userId`, `from` date, `to` date.
+    - `GET /api/v1/activity-logs/csv`: Streams CSV export formatted with Timestamp, User, Role, Action, Target, Old Value, New Value, Reason.
+    - Immutability: Deletions or updates to `ActivityLog` are strictly forbidden (PRD 4.8.3).
+  - **Done When**: Manager can filter activity log by event type; CSV download streams complete audit rows.
+
+- [ ] **Task 8.4.2: Temporary Back-Entry Grants & Timestamp Guard**
+  - **Files**: `server/src/middleware/back-entry.ts`, `server/src/modules/audit/back-entry.routes.ts`
+  - **Spec**: PRD 4.5. Outage paper fallback support.
+  - **Logic**:
+    - `POST /api/v1/auth/back-entry-grant`: Manager only. Grants back-entry permission to specific `userId` with `durationHours` (default 12h) and `reason`. Logs grant to `ActivityLog`.
+    - `GET /api/v1/auth/back-entry-grant`: Check active back-entry grant for current user.
+    - Middleware Guard: Inspects incoming mutation timestamps (`happenedAt` vs `enteredAt`). If `happenedAt < enteredAt`:
+      - Checks if caller is Manager OR has active unexpired `BackEntryGrant`. If neither, rejects with 403: *"Back-entry permission required"*.
+      - If valid, logs back-entry usage to `ActivityLog`.
+      - Rejects if `happenedAt` falls inside a locked/closed business day unless day is reopened (PRD 4.5.3).
+  - **Done When**: Unauthorized back-entry is blocked; Manager or granted user can back-enter outage paper orders; audit entry is logged.
+
+- [ ] **Task 8.4.3: Activity Log Explorer Frontend Integration**
+  - **Files**: [`src/pages/ActivityLog.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/ActivityLog.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 4.8.
+  - **UI Controls**:
+    - Date range filter, Action type multiselect, Role filter.
+    - Audit table showing Timestamp, User badge, Action, Old/New changes diff, Reason note.
+    - `"Export CSV"` button triggering direct download.
+    - `"Grant Back-Entry Permission"` modal for Manager with staff select, hours slider, reason input.
+    - Wire `auditApi` into `client.js`.
+  - **Done When**: Activity log explorer renders live audit records; Manager can grant temporary back-entry from UI.
+
+---
+
+## Phase 9 — Notification Center & Facility Routine Automation (PRD Sections 14, 20)
+
+### 9.1 Routine Facility Cleaning & Overdue Automation (PRD Section 14)
+*Priority: P1 | Target: `server/src/modules/facility/`, `server/src/scheduler/cleaning.job.ts`, `src/pages/Cleaning.jsx`, `src/pages/MyTasks.jsx`*
+
+- [ ] **Task 9.1.1: Cleaning Templates & Routine Task Scheduler**
+  - **Files**: `server/prisma/schema.prisma`, `server/src/modules/facility/cleaning-templates.routes.ts`, `server/src/scheduler/cleaning.job.ts`
+  - **Spec**: PRD 14.1, 14.2, 4.9.
+  - **Logic**:
+    - Schema: Add `CleaningTemplate` (`area`, `description`, `frequency` [Daily, Weekly, Per Shift], `preferredTime`, `assignedEmployeeId`, `isActive`).
+    - Endpoints: `GET /api/v1/cleaning/templates`, `POST /templates`, `PATCH /templates/:id`, `DELETE /templates/:id` (Manager only).
+    - Scheduled Job: Runs at shift start / daily; generates `CleaningTask` records with `source = "Routine"`, copies checklist and preferred time.
+  - **Done When**: Routine cleaning tasks auto-generate on schedule; templates manageable by Manager.
+
+- [ ] **Task 9.1.2: Overdue Cleaning Monitor & Cleaner Queue Dispatch**
+  - **Files**: `server/src/scheduler/cleaning.job.ts`, `server/src/modules/facility/cleaning.service.ts`
+  - **Spec**: PRD 14.3, 14.5.
+  - **Logic**:
+    - Runs every 15 minutes. Detects uncompleted `CleaningTask` where `dueTime < now()`.
+    - Alerts: Emits WebSocket event `cleaning:overdue` to `room:cleaner` and `room:manager`; creates persistent Notification: *"Cleaning task overdue: <area>"*.
+  - **Done When**: Tasks past due time trigger overdue alerts to cleaner and manager.
+
+- [ ] **Task 9.1.3: Cleaner Tasks & Facility Checklist Frontend Integration**
+  - **Files**: [`src/pages/Cleaning.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Cleaning.jsx), [`src/pages/MyTasks.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/MyTasks.jsx), [`src/pages/TableQueue.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/TableQueue.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 14.3, 14.4.
+  - **UI Controls**:
+    - `MyTasks.jsx`: Cleaner's assigned routine tasks, Start button (`In Progress`), Complete button with notes textarea.
+    - `TableQueue.jsx`: Shared unassigned table-clean tasks, claim task, complete task.
+    - `Cleaning.jsx`: Manager facility overview, Templates tab, Overdue task indicator.
+    - Wire `cleaningApi` (`listTasks`, `updateTaskStatus`, `listTemplates`, `createTemplate`).
+  - **Done When**: Cleaner updates routine tasks live; TableQueue syncs completed cleaning tasks.
+
+### 9.2 In-App Notification Center & Event Delivery (PRD Section 20)
+*Priority: P1 | Target: `server/src/modules/notifications/`, `src/pages/Notifications.jsx`*
+
+- [ ] **Task 9.2.1: Persistent Notifications REST API & Mark-Read Handlers**
+  - **Files**: `server/src/modules/notifications/notifications.routes.ts`, `server/src/modules/notifications/notifications.service.ts`
+  - **Spec**: PRD 20.1, 20.3.
+  - **Logic**:
+    - `GET /api/v1/notifications`: Returns current user's notifications (matching `recipientUserId == user.id` OR `recipientRole == user.role`). Supports `unreadOnly=true`.
+    - `PATCH /api/v1/notifications/:id/read`: Marks single notification as read (`isRead = true`).
+    - `POST /api/v1/notifications/read-all`: Marks all notifications for user/role as read.
+    - Retention Cleanup: Scheduled job archives / deletes notifications older than 30 days (PRD 20.1.1).
+  - **Done When**: Users receive only role/user-scoped notifications; mark-read and read-all update database.
+
+- [ ] **Task 9.2.2: Notification Bell, Dropdown & Sound Preferences Integration**
+  - **Files**: [`src/pages/Notifications.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Notifications.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
+  - **Spec**: PRD 20.1, 20.2.
+  - **UI Controls**:
+    - Global header notification bell with live unread badge count.
+    - Popover dropdown showing latest 5 unread alerts with direct navigation links.
+    - `Notifications.jsx` page: Full notification history, filter by unread/read, `"Mark all as read"` button.
+    - Sound triggers: Restricted to New kitchen ticket (Kitchen screen) and Ticket ready (owning Waiter) (PRD 20.2.1).
+    - Wire `notificationsApi` into `client.js`.
+  - **Done When**: Unread count updates in header; clicking notification marks it read; sound plays strictly on designated events.
