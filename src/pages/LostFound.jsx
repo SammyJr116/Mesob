@@ -1,19 +1,32 @@
 import React, { useState } from "react";
-import { Plus, Package } from "lucide-react";
+import { Plus, Package, Trash2 } from "lucide-react";
 import { PageHeader, StatusBadge, EmptyState } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
 import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
+import { isPrivileged } from "@/lib/roles";
 import { notifySuccess } from "@/lib/notify";
 import { businessDate, nextId, isoDate } from "@/lib/datetime";
+import { securityApi } from "@/api/client";
 
 export default function LostFound() {
-  const { db, updateItem, insertItem } = useData();
+  const { db, updateItem, insertItem, removeItem } = useData();
   const { role } = useRole();
   const { lostFound, managedLists } = db;
   const [claim, setClaim] = useState(null);
   const [adding, setAdding] = useState(false);
   const finder = role || "security";
+  const isManager = isPrivileged(role);
+
+  const deleteItem = async (id) => {
+    try {
+      await securityApi.deleteLostItem(id);
+    } catch {
+      // Local fallback
+    }
+    removeItem("lostFound", id);
+    notifySuccess("Lost item record deleted");
+  };
 
   return (
     <div>
@@ -36,6 +49,11 @@ export default function LostFound() {
               </div>
               <StatusBadge status={l.status} />
               {l.status === "Found" && <button onClick={() => setClaim(l)} className="btn-outline text-xs">Mark claimed</button>}
+              {isManager && (
+                <button onClick={() => deleteItem(l.id)} aria-label={`Delete ${l.item}`} className="rounded p-1 text-muted-foreground hover:bg-berbere-100 hover:text-berbere-600">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -43,7 +61,12 @@ export default function LostFound() {
 
       {claim && (
         <ClaimModal item={claim} onClose={() => setClaim(null)}
-          onConfirm={(claimant, phone, date) => {
+          onConfirm={async (claimant, phone, date) => {
+            try {
+              await securityApi.claimLostItem(claim.id, { claimantName: claimant, claimantPhone: phone });
+            } catch {
+              // Local fallback
+            }
             updateItem("lostFound", claim.id, { status: "Claimed", claimant, claimPhone: phone, claimDate: date });
             setClaim(null);
             notifySuccess(`${claim.item} claimed`);
@@ -52,7 +75,15 @@ export default function LostFound() {
       {adding && (
         <AddItemModal areas={managedLists.cleaningAreas} existing={lostFound} finder={finder}
           onClose={() => setAdding(false)}
-          onCreate={(draft) => {
+          onCreate={async (draft) => {
+            try {
+              await securityApi.recordLostItem({
+                itemDescription: draft.item || "Unknown item",
+                locationFound: draft.location || "Dining room",
+              });
+            } catch {
+              // Local fallback
+            }
             const id = nextId(lostFound, "LF", 2);
             insertItem("lostFound", { id, date: businessDate(), status: "Found", claimant: "", claimPhone: "", claimDate: "", foundBy: finder, ...draft });
             setAdding(false);

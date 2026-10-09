@@ -603,7 +603,7 @@ model Expense {
   amount        Decimal  @db.Decimal(10, 2)
   description   String
   date          String   // YYYY-MM-DD
-  status        String   @default("Confirmed") // Pending, Confirmed, Rejected
+  status        String   @default("Confirmed") // Pending confirmation, Confirmed, Rejected
   recordedById  String
   receiptUrl    String?
   createdAt     DateTime @default(now())
@@ -612,31 +612,85 @@ model Expense {
   @@index([status])
 }
 
+model RecurringExpenseTemplate {
+  id          String   @id @default(cuid())
+  category    String
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  period      String   // Weekly, Monthly
+  dayOfWeek   Int?     // 0-6
+  dayOfMonth  Int?     // 1-31
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Asset {
+  id                  String                         @id @default(cuid())
+  name                String
+  category            String
+  serialNumber        String?
+  purchaseDate        DateTime?
+  warrantyExpiryDate  DateTime?
+  location            String
+  status              String                         @default("Active") // Active, Under Maintenance, Out of Service, Retired
+  notes               String?                        @db.Text
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  maintenanceRequests MaintenanceRequest[]
+  preventiveTemplates PreventiveMaintenanceTemplate[]
+}
+
 model MaintenanceRequest {
-  id           String    @id @default(cuid())
-  assetName    String
-  description  String
-  priority     String    @default("Medium") // Low, Medium, High, Critical
-  status       String    @default("Open") // Open, In Progress, Resolved
-  reportedById String
-  assignedTo   String?
-  cost         Decimal   @default(0.00) @db.Decimal(10, 2)
-  resolvedAt   DateTime?
-  createdAt    DateTime  @default(now())
+  id              String    @id @default(cuid())
+  assetId         String?
+  asset           Asset?    @relation(fields: [assetId], references: [id])
+  assetName       String?
+  problem         String    // problem title
+  description     String
+  priority        String    @default("Medium") // Low, Medium, High, Critical
+  status          String    @default("Reported") // Reported, Assigned, In Progress, Completed
+  reportedById    String
+  assignedTo      String?   // employee id or external vendor
+  vendorPhone     String?
+  cost            Decimal   @default(0.00) @db.Decimal(10, 2)
+  resolvedAt      DateTime?
+  resolutionNotes String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([status])
+  @@index([assetId])
+}
+
+model PreventiveMaintenanceTemplate {
+  id            String   @id @default(cuid())
+  assetId       String
+  asset         Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  taskName      String
+  frequencyDays Int      @default(30)
+  assignedTo    String?
+  vendorPhone   String?
+  nextDueDate   DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([nextDueDate])
 }
 
 model Visitor {
-  id           String    @id @default(cuid())
-  name         String
-  phone        String
-  company      String?
-  purpose      String
-  checkInTime  DateTime  @default(now())
-  checkOutTime DateTime?
-  badgeNumber  String?
-  recordedById String
+  id            String    @id @default(cuid())
+  name          String
+  phone         String
+  company       String?
+  purpose       String
+  personVisited String?
+  checkInTime   DateTime  @default(now())
+  checkOutTime  DateTime?
+  badgeNumber   String?
+  recordedById  String
 }
 
 model Incident {
@@ -646,11 +700,13 @@ model Incident {
   severity        String    @default("Low") // Low, Medium, High, Critical
   description     String    @db.Text
   location        String
-  status          String    @default("Open") // Open, Under Review, Resolved
+  status          String    @default("Reported") // Reported, Under Review, Resolved
   reportedById    String
+  peopleInvolved  String?   @db.Text
   resolvedById    String?
   resolutionNotes String?   @db.Text
   occurredAt      DateTime  @default(now())
+  resolvedAt      DateTime?
   createdAt       DateTime  @default(now())
 
   @@index([status])

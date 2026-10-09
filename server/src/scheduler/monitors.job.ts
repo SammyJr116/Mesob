@@ -1,5 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { emitTicketDelayed, emitReservationNoShow, emitTableUpdated } from "../ws/gateway.js";
+import { recurringExpensesJob } from "./recurring-expenses.job.js";
+import { maintenanceJob } from "./maintenance.job.js";
 
 export class MonitorsJob {
   private timer: NodeJS.Timeout | null = null;
@@ -112,6 +114,8 @@ export class MonitorsJob {
       try {
         await this.checkDelayedTickets();
         await this.checkNoShowReservations();
+        await recurringExpensesJob.run();
+        await maintenanceJob.run();
       } catch (err) {
         console.error("[MonitorsJob] Poller encountered error:", err);
       }

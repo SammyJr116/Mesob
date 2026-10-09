@@ -1,19 +1,21 @@
 import React, { useMemo, useState } from "react";
-import { Plus, LogIn, LogOut, Phone, Users } from "lucide-react";
+import { Plus, LogIn, LogOut, Phone, Users, Trash2 } from "lucide-react";
 import { PageHeader, SearchInput, EmptyState } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
 import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
-import { ROLES } from "@/lib/roles";
+import { ROLES, isPrivileged } from "@/lib/roles";
 import { nextId, clockTime } from "@/lib/datetime";
 import { notifySuccess, notifyError } from "@/lib/notify";
+import { securityApi } from "@/api/client";
 
 export default function Visitors() {
-  const { db, insertItem, updateItem } = useData();
+  const { db, insertItem, updateItem, removeItem } = useData();
   const { role } = useRole();
   const { visitors } = db;
   const [q, setQ] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const isManager = isPrivileged(role);
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
@@ -24,10 +26,25 @@ export default function Visitors() {
   const checkedIn = visitors.filter((v) => !v.checkOut).length;
   const me = ROLES.find((r) => r.id === role)?.name || "Security";
 
-  const checkOut = (id) => {
+  const checkOut = async (id) => {
+    try {
+      await securityApi.checkOutVisitor(id);
+    } catch {
+      // Local fallback
+    }
     updateItem("visitors", id, { checkOut: clockTime() });
     const v = visitors.find((x) => x.id === id);
     notifySuccess(`${v?.name || "Visitor"} checked out`);
+  };
+
+  const deleteVisitor = async (id) => {
+    try {
+      await securityApi.deleteVisitor(id);
+    } catch {
+      // Local fallback
+    }
+    removeItem("visitors", id);
+    notifySuccess("Visitor record deleted");
   };
 
   return (
@@ -58,7 +75,14 @@ export default function Visitors() {
                 <p>In: {v.checkIn}</p>
                 <p>Out: {v.checkOut || "—"}</p>
               </div>
-              {!v.checkOut && <button onClick={() => checkOut(v.id)} className="btn-outline text-xs"><LogOut className="h-3.5 w-3.5" /> Check out</button>}
+              <div className="flex items-center gap-2">
+                {!v.checkOut && <button onClick={() => checkOut(v.id)} className="btn-outline text-xs"><LogOut className="h-3.5 w-3.5" /> Check out</button>}
+                {isManager && (
+                  <button onClick={() => deleteVisitor(v.id)} aria-label={`Delete ${v.name}`} className="rounded p-1 text-muted-foreground hover:bg-berbere-100 hover:text-berbere-600">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -72,10 +96,20 @@ export default function Visitors() {
           footer={null}
         >
           <VisitorForm
-            onSubmit={(draft) => {
+            onSubmit={async (draft) => {
               if (!draft.name.trim()) {
                 notifyError("Visitor name is required");
                 return;
+              }
+              try {
+                await securityApi.checkInVisitor({
+                  name: draft.name.trim(),
+                  phone: draft.phone,
+                  purpose: draft.purpose,
+                  personVisited: draft.visiting,
+                });
+              } catch {
+                // Local fallback
               }
               insertItem("visitors", {
                 id: nextId(visitors, "VS", 3),
@@ -84,7 +118,7 @@ export default function Visitors() {
                 loggedBy: me,
                 ...draft,
                 name: draft.name.trim(),
-                notes: draft.notes.trim() || "—",
+                notes: draft.notes?.trim() || "—",
               });
               notifySuccess(`${draft.name.trim()} checked in`);
               setShowAdd(false);

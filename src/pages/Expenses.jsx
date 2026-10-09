@@ -9,6 +9,7 @@ import { useRole } from "@/lib/RoleContext";
 import { isPrivileged } from "@/lib/roles";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { businessDate, isoDate, nextId, stamp } from "@/lib/datetime";
+import { expensesApi } from "@/api/client";
 
 export default function Expenses() {
   const { db, updateItem, insertItem, removeItem } = useData();
@@ -40,13 +41,27 @@ export default function Expenses() {
   }, [expenses, isManager, q, cat, status]);
   const { visibleCount, filtered, totalConfirmed, pending } = view;
 
-  const confirm = (e) => {
+  const confirm = async (e) => {
+    try {
+      await expensesApi.confirm(e.id, e.amount);
+    } catch {
+      // Offline fallback
+    }
     updateItem("expenses", e.id, { status: "Confirmed", confirmedOn: stamp() });
     notifySuccess(`${e.id} confirmed`);
   };
 
-  const saveTemplate = (draft) => {
+  const saveTemplate = async (draft) => {
     if (!draft.category) return notifyError("A template needs a category");
+    try {
+      if (showTemplate?.original) {
+        await expensesApi.updateTemplate(draft.id, draft);
+      } else {
+        await expensesApi.createTemplate(draft);
+      }
+    } catch {
+      // Offline fallback
+    }
     if (showTemplate?.original) {
       updateItem("expenseTemplates", draft.id, draft);
       notifySuccess(`${draft.category} template updated`);
@@ -163,7 +178,18 @@ export default function Expenses() {
           categories={managedLists.expenseCategories}
           by={role === "inventory" ? "Inventory" : "Manager"}
           onClose={() => setShowAdd(false)}
-          onCreate={(draft) => {
+          onCreate={async (draft) => {
+            try {
+              await expensesApi.create({
+                category: draft.category,
+                amount: draft.amount,
+                description: draft.description,
+                date: draft.date || businessDate(),
+                receiptUrl: draft.receipt || null,
+              });
+            } catch {
+              // Local fallback
+            }
             const id = nextId(expenses, "EX", 3);
             insertItem("expenses", {
               id,

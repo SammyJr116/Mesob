@@ -9,6 +9,7 @@ import { visibleIncidents } from "@/lib/scope";
 import { notifySuccess } from "@/lib/notify";
 import { stamp, nextId } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
+import { securityApi } from "@/api/client";
 
 export default function Incidents() {
   const { db, updateItem, insertItem } = useData();
@@ -39,12 +40,22 @@ export default function Incidents() {
     });
   }, [incidents, q, status]);
 
-  const advance = (i) => {
+  const advance = async (i) => {
+    try {
+      await securityApi.reviewIncident(i.id);
+    } catch {
+      // Local fallback
+    }
     updateItem("incidents", i.id, { status: "Under Review", reviewedOn: stamp() });
     notifySuccess(`${i.id} moved to review`);
   };
 
-  const resolve = (i, resolution) => {
+  const resolve = async (i, resolution) => {
+    try {
+      await securityApi.resolveIncident(i.id, resolution);
+    } catch {
+      // Local fallback
+    }
     updateItem("incidents", i.id, { status: "Resolved", resolution, resolvedOn: stamp() });
     insertItem("activityLog", { id: `L${Date.now()}`, who: role || "manager", when: stamp(), action: "Resolved incident", target: i.id, old: i.status, new: "Resolved", reason: resolution });
     setResolving(null);

@@ -156,3 +156,48 @@ export const reportsApi = {
     return `${API_BASE_URL}/reports/export/${type}${search ? `?${search}` : ""}`;
   },
 };
+
+export const expensesApi = {
+  list: (params) => api.get("/expenses", params),
+  create: (data) => api.post("/expenses", data),
+  update: (id, data) => api.patch(`/expenses/${id}`, data),
+  confirm: (id, amount) => api.patch(`/expenses/${id}/confirm`, { amount }),
+  listTemplates: () => api.get("/expenses/templates"),
+  createTemplate: (data) => api.post("/expenses/templates", data),
+  updateTemplate: (id, data) => api.patch(`/expenses/templates/${id}`, data),
+  deleteTemplate: (id) => api.delete(`/expenses/templates/${id}`),
+};
+
+export const assetsApi = {
+  list: (params) => api.get("/assets", params),
+  create: (data) => api.post("/assets", data),
+  update: (id, data) => api.patch(`/assets/${id}`, data),
+  retire: (id) => api.delete(`/assets/${id}`),
+};
+
+export const maintenanceApi = {
+  listRequests: (params) => api.get("/maintenance/requests", params),
+  createRequest: (data) => api.post("/maintenance/requests", data),
+  updateRequest: (id, data) => api.patch(`/maintenance/requests/${id}`, data),
+  deleteRequest: (id) => api.delete(`/maintenance/requests/${id}`),
+  listPreventive: () => api.get("/maintenance/preventive"),
+  createPreventive: (data) => api.post("/maintenance/preventive", data),
+  updatePreventive: (id, data) => api.patch(`/maintenance/preventive/${id}`, data),
+  deletePreventive: (id) => api.delete(`/maintenance/preventive/${id}`),
+};
+
+export const securityApi = {
+  listVisitors: (params) => api.get("/security/visitors", params),
+  checkInVisitor: (data) => api.post("/security/visitors", data),
+  checkOutVisitor: (id) => api.patch(`/security/visitors/${id}/checkout`, {}),
+  deleteVisitor: (id) => api.delete(`/security/visitors/${id}`),
+  listIncidents: (params) => api.get("/security/incidents", params),
+  reportIncident: (data) => api.post("/security/incidents", data),
+  reviewIncident: (id) => api.patch(`/security/incidents/${id}/review`, {}),
+  resolveIncident: (id, resolutionNotes) => api.patch(`/security/incidents/${id}/resolve`, { resolutionNotes }),
+  listLostFound: (params) => api.get("/security/lost-found", params),
+  recordLostItem: (data) => api.post("/security/lost-found", data),
+  claimLostItem: (id, data) => api.patch(`/security/lost-found/${id}/claim`, data),
+  deleteLostItem: (id) => api.delete(`/security/lost-found/${id}`),
+};
+

@@ -384,7 +384,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 7.1 Expenses Management Engine (PRD Section 17)
 *Priority: P1 | Target: `server/src/modules/expenses/`, `server/src/scheduler/recurring-expenses.job.ts`, `src/pages/Expenses.jsx`*
 
-- [ ] **Task 7.1.1: Expense REST Endpoints & Scoped Permissions**
+- [x] **Task 7.1.1: Expense REST Endpoints & Scoped Permissions**
   - **Files**: `server/src/modules/expenses/expenses.routes.ts`, `server/src/modules/expenses/expenses.service.ts`
   - **Spec**: PRD 17.1, 17.2, 3.3.
   - **Logic**:
@@ -394,7 +394,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `DELETE /api/v1/expenses/:id`: Hard-blocked (returns 403: *"Expenses are never deleted"* - PRD 17.2.2, 4.6.1).
   - **Done When**: Inventory staff can only view/create own records; Manager can view/edit any with activity log; delete attempts fail with 403.
 
-- [ ] **Task 7.1.2: Recurring Expense Templates & Automated Generation Job**
+- [x] **Task 7.1.2: Recurring Expense Templates & Automated Generation Job**
   - **Files**: `server/prisma/schema.prisma`, `server/src/modules/expenses/recurring-expenses.routes.ts`, `server/src/scheduler/recurring-expenses.job.ts`
   - **Spec**: PRD 17.3, 4.9.
   - **Logic**:
@@ -404,7 +404,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Confirmation Endpoint: `PATCH /api/v1/expenses/:id/confirm` (Manager only) updates actual amount and sets `status = "Confirmed"`.
   - **Done When**: Cron job creates "Pending confirmation" expense entries; confirming makes them visible in financial reports.
 
-- [ ] **Task 7.1.3: Expenses Frontend UI & Client Integration**
+- [x] **Task 7.1.3: Expenses Frontend UI & Client Integration**
   - **Files**: [`src/pages/Expenses.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Expenses.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 17.5.
   - **UI Controls**:
@@ -418,7 +418,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 7.2 Equipment & Preventive Maintenance Engine (PRD Section 18)
 *Priority: P1 | Target: `server/src/modules/maintenance/`, `server/src/scheduler/maintenance.job.ts`, `src/pages/Maintenance.jsx`*
 
-- [ ] **Task 7.2.1: Asset Registry Data Model & REST Endpoints**
+- [x] **Task 7.2.1: Asset Registry Data Model & REST Endpoints**
   - **Files**: `server/prisma/schema.prisma`, `server/src/modules/maintenance/assets.routes.ts`, `server/src/modules/maintenance/assets.service.ts`
   - **Spec**: PRD 18.1, 3.3.
   - **Logic**:
@@ -427,7 +427,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Status Rules: Assets cannot be hard-deleted; soft status transition to `Retired` (PRD 18.1.1).
   - **Done When**: Manager can register and update equipment assets; retired assets are preserved; non-managers forbidden.
 
-- [ ] **Task 7.2.2: Maintenance Request Workflow, Costs & Deletion Safeguards**
+- [x] **Task 7.2.2: Maintenance Request Workflow, Costs & Deletion Safeguards**
   - **Files**: `server/src/modules/maintenance/maintenance.routes.ts`, `server/src/modules/maintenance/maintenance.service.ts`
   - **Spec**: PRD 18.2, 18.3, 18.6, 18.7.
   - **Logic**:
@@ -437,7 +437,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `DELETE /api/v1/maintenance/requests/:id`: Manager only. If `cost > 0`, reject with 400: *"Cannot delete maintenance requests with recorded costs. Archive only."* (PRD 18.7.1). If `cost === 0`, allow deletion and log to `ActivityLog`.
   - **Done When**: Staff can report issues; Manager assigns and records costs; deleting request with cost is blocked while cost-free can be deleted.
 
-- [ ] **Task 7.2.3: Warranty Expiry Alerts & Preventive Maintenance Scheduler**
+- [x] **Task 7.2.3: Warranty Expiry Alerts & Preventive Maintenance Scheduler**
   - **Files**: `server/prisma/schema.prisma`, `server/src/scheduler/maintenance.job.ts`
   - **Spec**: PRD 18.4, 18.5, 4.9.
   - **Logic**:
@@ -446,7 +446,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Preventive Maintenance Job: Runs daily. Checks templates where `nextDueDate <= now`. Automatically creates a `MaintenanceRequest` (priority `Medium`, title `[Preventive] <taskName>`), advances `nextDueDate = now + frequencyDays`, notifies Manager.
   - **Done When**: Scheduled job triggers warranty alert 30 days prior and generates recurring maintenance requests.
 
-- [ ] **Task 7.2.4: Maintenance & Assets Frontend UI Integration**
+- [x] **Task 7.2.4: Maintenance & Assets Frontend UI Integration**
   - **Files**: [`src/pages/Maintenance.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Maintenance.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 18.2, 18.5.
   - **UI Controls**:
@@ -460,7 +460,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 7.3 Security Records & Incident Lifecycle (PRD Section 19)
 *Priority: P1 | Target: `server/src/modules/security/`, `src/pages/Visitors.jsx`, `src/pages/Incidents.jsx`, `src/pages/LostFound.jsx`*
 
-- [ ] **Task 7.3.1: Visitor Log Endpoints & Check-Out Tracking**
+- [x] **Task 7.3.1: Visitor Log Endpoints & Check-Out Tracking**
   - **Files**: `server/src/modules/security/visitors.routes.ts`, `server/src/modules/security/visitors.service.ts`
   - **Spec**: PRD 19.1, 3.3.
   - **Logic**:
@@ -470,7 +470,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `DELETE /api/v1/security/visitors/:id`: Manager only (PRD 19.1.3). Logs to `ActivityLog`.
   - **Done When**: Security can check in/out visitors; Manager can view/delete; other roles receive 403 Forbidden.
 
-- [ ] **Task 7.3.2: Incident Management & Manager Resolution Workflow**
+- [x] **Task 7.3.2: Incident Management & Manager Resolution Workflow**
   - **Files**: `server/src/modules/security/incidents.routes.ts`, `server/src/modules/security/incidents.service.ts`
   - **Spec**: PRD 19.2, 3.3, 4.6.3.
   - **Logic**:
@@ -481,7 +481,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `DELETE /api/v1/security/incidents/:id`: Strictly blocked (403: *"Incidents are archive-only and never deleted"* - PRD 19.2.4).
   - **Done When**: Incidents transition Reported -> Under Review -> Resolved by Manager with resolution notes; deletion rejected.
 
-- [ ] **Task 7.3.3: Lost & Found Register & Claim Verification**
+- [x] **Task 7.3.3: Lost & Found Register & Claim Verification**
   - **Files**: `server/src/modules/security/lost-found.routes.ts`, `server/src/modules/security/lost-found.service.ts`
   - **Spec**: PRD 19.3, 3.3, 4.6.2.
   - **Logic**:
@@ -491,7 +491,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `DELETE /api/v1/security/lost-found/:id`: Manager only (PRD 19.3.3). Logs to `ActivityLog`.
   - **Done When**: Lost items recorded; claiming requires claimant name & phone; Manager can delete; others blocked.
 
-- [ ] **Task 7.3.4: Security Role Frontend UI & Privacy Gating**
+- [x] **Task 7.3.4: Security Role Frontend UI & Privacy Gating**
   - **Files**: [`src/pages/Visitors.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Visitors.jsx), [`src/pages/Incidents.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Incidents.jsx), [`src/pages/LostFound.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/LostFound.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 19.4, 3.5.
   - **UI Controls**:

@@ -17,6 +17,10 @@ import { cleaningRoutes } from "./modules/facility/cleaning.routes.js";
 import { reportsRoutes } from "./modules/reports/reports.routes.js";
 import { tablesRoutes } from "./modules/tables/tables.routes.js";
 import { menuRoutes } from "./modules/menu/menu.routes.js";
+import { expensesRoutes } from "./modules/expenses/expenses.routes.js";
+import { assetsRoutes } from "./modules/maintenance/assets.routes.js";
+import { maintenanceRoutes } from "./modules/maintenance/maintenance.routes.js";
+import { securityRoutes } from "./modules/security/security.routes.js";
 import { monitorsJob } from "./scheduler/monitors.job.js";
 import { requireRole } from "./middleware/rbac.js";
 import { Role } from "@prisma/client";
@@ -96,6 +100,18 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Reporting, Analytics & Day Closure Routes (PRD 22)
   await app.register(reportsRoutes, { prefix: "/api/v1/reports" });
+
+  // Expenses Management Routes (PRD 17)
+  await app.register(expensesRoutes, { prefix: "/api/v1/expenses" });
+
+  // Equipment & Assets Registry Routes (PRD 18.1)
+  await app.register(assetsRoutes, { prefix: "/api/v1/assets" });
+
+  // Maintenance Requests & Preventive Templates (PRD 18.2, 18.5)
+  await app.register(maintenanceRoutes, { prefix: "/api/v1/maintenance" });
+
+  // Security Operations: Visitors, Incidents & Lost/Found (PRD 19)
+  await app.register(securityRoutes, { prefix: "/api/v1/security" });
 
   // Example Protected RBAC Route for Testing (PRD 3.3)
   app.get(

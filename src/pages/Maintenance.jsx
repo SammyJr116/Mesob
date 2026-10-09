@@ -11,8 +11,9 @@ import { etb } from "@/lib/format";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { isoDate, stamp, nextId, toDate, daysBetween } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
+import { maintenanceApi, assetsApi } from "@/api/client";
 
-const PRIORITIES = ["Low", "Medium", "High"];
+const PRIORITIES = ["Low", "Medium", "High", "Critical"];
 const FLOW = ["Reported", "Assigned", "In Progress", "Completed"];
 
 export default function Maintenance() {
@@ -95,10 +96,19 @@ export default function Maintenance() {
     ...(manager ? [assetActionsColumn] : []),
   ].filter(Boolean);
 
-  const report = (draft) => {
+  const report = async (draft) => {
     const problem = draft.problem.trim();
     if (!problem) return notifyError("Describe the problem");
     if (draft.asset && !assets.some((a) => a.name === draft.asset)) return notifyError(`"${draft.asset}" is not on the asset list`);
+    try {
+      await maintenanceApi.createRequest({
+        problem,
+        description: draft.description || problem,
+        priority: draft.priority,
+      });
+    } catch {
+      // Local fallback
+    }
     const id = nextId(maintenanceRequests, "MR");
     insertItem("maintenanceRequests", {
       id,
@@ -132,8 +142,17 @@ export default function Maintenance() {
     notifySuccess(`${m.id} moved to ${next}`);
   };
 
-  const saveAsset = (draft) => {
+  const saveAsset = async (draft) => {
     if (!draft.name.trim()) return notifyError("An asset needs a name");
+    try {
+      if (editingAsset?.original) {
+        await assetsApi.update(draft.id, draft);
+      } else {
+        await assetsApi.create(draft);
+      }
+    } catch {
+      // Local fallback
+    }
     if (editingAsset?.original) {
       updateItem("assets", draft.id, draft);
       notifySuccess(`${draft.name} updated`);

@@ -248,3 +248,15 @@ export function emitReservationNoShow(reservation: any) {
   });
 }
 
+/**
+ * Emits generic in-app notification to specified room or user
+ */
+export function emitNotification(roomOrUser: string, notification: any) {
+  if (!io) return;
+  io.to(roomOrUser).emit("notification:new", {
+    ...notification,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+
