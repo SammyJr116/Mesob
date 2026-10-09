@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Plus, Upload, User, Users, Pencil, Trash2, ShieldCheck, UserX } from "lucide-react";
 import { PageHeader, StatusBadge, SearchInput, EmptyState, SectionCard } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
@@ -8,6 +8,7 @@ import { useRole } from "@/lib/RoleContext";
 import { isPrivileged } from "@/lib/roles";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { isoDate, nextId } from "@/lib/datetime";
+import { employeesApi } from "@/api/client";
 
 export default function Employees() {
   const { db, insertItem, updateItem, removeItem } = useData();
@@ -15,39 +16,95 @@ export default function Employees() {
   const { employees, managedLists, users } = db;
   const manager = isPrivileged(role);
 
+  const [serverEmployees, setServerEmployees] = useState(null);
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("All");
   const [editing, setEditing] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null);
 
+  const fetchEmployees = async () => {
+    try {
+      const res = await employeesApi.list();
+      if (res?.employees) {
+        setServerEmployees(
+          res.employees.map((e) => ({
+            id: e.id,
+            name: e.name,
+            number: e.employeeNumber,
+            phone: e.phone,
+            email: e.email || "",
+            position: e.role,
+            department: e.department || "Front of House",
+            hire: e.joinedDate ? new Date(e.joinedDate).toISOString().slice(0, 10) : isoDate(),
+            status: e.status,
+            role: e.role,
+            ordersCount: e._count?.orders || 0,
+            hasLogin: !!e.user,
+          }))
+        );
+      }
+    } catch {
+      // fallback to mock
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const employeeList = serverEmployees || employees;
+
   const filtered = useMemo(
     () =>
-      employees.filter((e) => {
+      employeeList.filter((e) => {
         const okQ =
           !q ||
           e.name.toLowerCase().includes(q.toLowerCase()) ||
-          e.number.toLowerCase().includes(q.toLowerCase()) ||
+          (e.number || "").toLowerCase().includes(q.toLowerCase()) ||
           (e.email || "").toLowerCase().includes(q.toLowerCase());
         const okD = dept === "All" || e.department === dept;
         return okQ && okD;
       }),
-    [employees, q, dept]
+    [employeeList, q, dept]
   );
 
-  const save = (draft) => {
+  const save = async (draft) => {
     const name = draft.name.trim();
     if (!name) return notifyError("An employee needs a name");
-    const clash = employees.some(
-      (e) => e.id !== draft.id && (e.name.toLowerCase() === name.toLowerCase() || (draft.email && e.email === draft.email))
-    );
-    if (clash) return notifyError(draft.email ? "That name or email is already on the roster" : "That name is already on the roster");
 
-    if (editing?.original) {
-      updateItem("employees", draft.id, draft);
-      notifySuccess(`${name} updated`);
-    } else {
-      insertItem("employees", draft);
-      notifySuccess(`${name} added — an Administrator still needs to create the login`);
+    try {
+      if (editing?.original) {
+        await employeesApi.update(draft.id, {
+          name,
+          role: draft.position || draft.role,
+          phone: draft.phone,
+          email: draft.email,
+          department: draft.department,
+          status: draft.status,
+        });
+        updateItem("employees", draft.id, draft);
+        notifySuccess(`${name} updated`);
+      } else {
+        await employeesApi.create({
+          name,
+          role: draft.position || draft.role,
+          phone: draft.phone,
+          email: draft.email,
+          department: draft.department,
+          status: draft.status || "Active",
+        });
+        insertItem("employees", draft);
+        notifySuccess(`${name} added — an Administrator still needs to create the login`);
+      }
+      fetchEmployees();
+    } catch (err) {
+      if (editing?.original) {
+        updateItem("employees", draft.id, draft);
+        notifySuccess(`${name} updated (local)`);
+      } else {
+        insertItem("employees", draft);
+        notifySuccess(`${name} added (local)`);
+      }
     }
     setEditing(null);
   };
@@ -206,10 +263,16 @@ export default function Employees() {
           description="The employee record is deleted. Orders and activity log entries that name this person are left untouched."
           onClose={() => setConfirmRemove(null)}
           size="sm"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            removeItem("employees", confirmRemove.id);
-            notifySuccess(`${confirmRemove.name} removed from the roster`);
+            try {
+              await employeesApi.delete(confirmRemove.id);
+              removeItem("employees", confirmRemove.id);
+              notifySuccess(`${confirmRemove.name} removed from the roster`);
+              fetchEmployees();
+            } catch (err) {
+              notifyError("Could not remove employee", err.message || "Archive-only: employee may have linked orders or user account.");
+            }
             setConfirmRemove(null);
           }}
           footer={

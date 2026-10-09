@@ -87,6 +87,10 @@ export const authApi = {
   logout: () => api.post("/auth/logout", {}),
   me: () => api.get("/auth/me"),
   unlock: (userId) => api.post(`/auth/unlock/${userId}`, {}),
+  updateProfile: (data) => api.patch("/auth/profile", data),
+  changePassword: (currentPassword, newPassword) => api.post("/auth/change-password", { currentPassword, newPassword }),
+  grantBackEntry: (data) => api.post("/auth/back-entry-grant", data),
+  checkBackEntry: () => api.get("/auth/back-entry-grant"),
 };
 
 export const ordersApi = {
@@ -200,4 +204,49 @@ export const securityApi = {
   claimLostItem: (id, data) => api.patch(`/security/lost-found/${id}/claim`, data),
   deleteLostItem: (id) => api.delete(`/security/lost-found/${id}`),
 };
+
+export const employeesApi = {
+  list: (params) => api.get("/employees", params),
+  get: (id) => api.get(`/employees/${id}`),
+  create: (data) => api.post("/employees", data),
+  update: (id, data) => api.patch(`/employees/${id}`, data),
+  delete: (id) => api.delete(`/employees/${id}`),
+};
+
+export const usersApi = {
+  list: () => api.get("/users"),
+  create: (data) => api.post("/users", data),
+  updateStatus: (id, status) => api.patch(`/users/${id}/status`, { status }),
+  updateRole: (id, role) => api.patch(`/users/${id}/role`, { role }),
+  resetPassword: (id, temporaryPassword) => api.post(`/users/${id}/reset-password`, { temporaryPassword }),
+  unlock: (id) => api.post(`/users/${id}/unlock`, {}),
+};
+
+export const customersApi = {
+  lookup: (search) => api.get("/customers/lookup", { query: search }),
+  list: (params) => api.get("/customers", params),
+  get: (id) => api.get(`/customers/${id}`),
+  create: (data) => api.post("/customers", data),
+  update: (id, data) => api.patch(`/customers/${id}`, data),
+  merge: (sourceCustomerId, targetCustomerId) => api.post("/customers/merge", { sourceCustomerId, targetCustomerId }),
+};
+
+export const settingsApi = {
+  get: () => api.get("/settings"),
+  update: (data) => api.patch("/settings", data),
+  listPaymentMethods: () => api.get("/settings/payment-methods"),
+  createPaymentMethod: (data) => api.post("/settings/payment-methods", data),
+  updatePaymentMethod: (id, data) => api.patch(`/settings/payment-methods/${id}`, data),
+};
+
+export const auditApi = {
+  list: (params) => api.get("/activity-logs", params),
+  getExportUrl: (params = {}) => {
+    const search = new URLSearchParams(params).toString();
+    return `${API_BASE_URL}/activity-logs/csv${search ? `?${search}` : ""}`;
+  },
+  grantBackEntry: (data) => api.post("/auth/back-entry-grant", data),
+  checkBackEntry: () => api.get("/auth/back-entry-grant"),
+};
+
 

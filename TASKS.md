@@ -508,7 +508,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 8.1 Employee Records & User Administration (PRD Section 6)
 *Priority: P0 | Target: `server/src/modules/employees/`, `server/src/modules/users/`, `src/pages/Employees.jsx`, `src/pages/Users.jsx`*
 
-- [ ] **Task 8.1.1: Employee Directory CRUD & Employee Number Sequence**
+- [x] **Task 8.1.1: Employee Directory CRUD & Employee Number Sequence**
   - **Files**: `server/src/modules/employees/employees.routes.ts`, `server/src/modules/employees/employees.service.ts`
   - **Spec**: PRD 6.1, 6.3, 3.3. Manager only (`requireRole(Role.MANAGER)`).
   - **Logic**:
@@ -518,7 +518,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `DELETE /api/v1/employees/:id`: If employee has linked orders or transactions, block deletion (archive-only, PRD 4.6.1).
   - **Done When**: Creating employee auto-increments EMP-XXX; setting Terminated deactivates linked user account; active transactions block deletion.
 
-- [ ] **Task 8.1.2: Administrator User Management & Password Reset Workflow**
+- [x] **Task 8.1.2: Administrator User Management & Password Reset Workflow**
   - **Files**: `server/src/modules/users/users.routes.ts`, `server/src/modules/users/users.service.ts`
   - **Spec**: PRD 6.2, 6.5, 3.3. Administrator only (`requireRole(Role.ADMIN)`).
   - **Logic**:
@@ -529,7 +529,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `POST /api/v1/users/:id/unlock`: Clears lockout (`failedAttempts = 0`, `lockedUntil = null`).
   - **Done When**: Only Admin can access `/api/v1/users`; password resets enforce `mustChangePassword`; locked accounts can be unlocked.
 
-- [ ] **Task 8.1.3: User Profile & Self-Service Password Change**
+- [x] **Task 8.1.3: User Profile & Self-Service Password Change**
   - **Files**: `server/src/modules/auth/auth.routes.ts`, [`src/pages/Profile.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Profile.jsx)
   - **Spec**: PRD 3.2.8, 6.4. All authenticated users.
   - **Logic**:
@@ -538,7 +538,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `POST /api/v1/auth/change-password`: Requires `currentPassword` and `newPassword` (min 8 chars). Verifies current password before updating; sets `mustChangePassword = false`.
   - **Done When**: User can verify old password and update to new password; invalid old password returns 400.
 
-- [ ] **Task 8.1.4: Staff Management Frontend Integration**
+- [x] **Task 8.1.4: Staff Management Frontend Integration**
   - **Files**: [`src/pages/Employees.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Employees.jsx), [`src/pages/Users.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Users.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 6.1, 6.2.
   - **UI Controls**:
@@ -550,7 +550,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 8.2 Customer Directory & Order History Engine (PRD Section 12)
 *Priority: P1 | Target: `server/src/modules/customers/`, `src/pages/Customers.jsx`*
 
-- [ ] **Task 8.2.1: Customer Search, Lookup & Aggregated History Endpoints**
+- [x] **Task 8.2.1: Customer Search, Lookup & Aggregated History Endpoints**
   - **Files**: `server/src/modules/customers/customers.routes.ts`, `server/src/modules/customers/customers.service.ts`
   - **Spec**: PRD 12.1, 12.2, 12.3. Waiter and Manager.
   - **Logic**:
@@ -561,7 +561,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - `PATCH /api/v1/customers/:id`: Update customer details or notes.
   - **Done When**: Phone lookup responds under 100ms; customer detail aggregates total spend and order history accurately.
 
-- [ ] **Task 8.2.2: Customer Profile Merging Transaction**
+- [x] **Task 8.2.2: Customer Profile Merging Transaction**
   - **Files**: `server/src/modules/customers/customers.service.ts`, `server/src/modules/customers/customers.routes.ts`
   - **Spec**: PRD 12.4. Manager only.
   - **Logic**:
@@ -574,7 +574,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
       - Logs to `ActivityLog`: *"Merged customer <source> into <target>"*.
   - **Done When**: Merging moves all orders and reservations to target profile without data loss; logged to activity log.
 
-- [ ] **Task 8.2.3: Customers Directory Frontend UI Integration**
+- [x] **Task 8.2.3: Customers Directory Frontend UI Integration**
   - **Files**: [`src/pages/Customers.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Customers.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 12.3, 12.4.
   - **UI Controls**:
@@ -587,7 +587,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 8.3 System Settings & Business Profile Configuration (PRD Section 5)
 *Priority: P1 | Target: `server/src/modules/settings/`, `src/pages/Settings.jsx`*
 
-- [ ] **Task 8.3.1: Settings API Endpoints & Operational Parameters**
+- [x] **Task 8.3.1: Settings API Endpoints & Operational Parameters**
   - **Files**: `server/src/modules/settings/settings.routes.ts`, `server/src/modules/settings/settings.service.ts`
   - **Spec**: PRD 5.1, 5.2, 5.4, 5.5, 5.7. Manager only (`requireRole(Role.MANAGER)`).
   - **Logic**:
@@ -596,7 +596,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Audit: Any change to `vatRate`, `serviceChargeRate`, `tin`, `closingTime`, or `inventoryTracking` writes to `ActivityLog` with old and new values (PRD 5.1.1).
   - **Done When**: Manager can update settings; non-managers get 403; changes write audit log entries with old vs new values.
 
-- [ ] **Task 8.3.2: Payment Methods & Reference Requirements Configuration**
+- [x] **Task 8.3.2: Payment Methods & Reference Requirements Configuration**
   - **Files**: `server/prisma/schema.prisma`, `server/src/modules/settings/payment-methods.routes.ts`
   - **Spec**: PRD 5.3.
   - **Logic**:
@@ -606,7 +606,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Billing Enforcer: When recording order payment, validates if selected method requires reference; if required and reference empty, rejects with 400 (PRD 5.3.2).
   - **Done When**: Payment methods configurable; payment engine rejects missing reference for Telebirr/CBE Birr.
 
-- [ ] **Task 8.3.3: Settings Frontend UI & Server Synchronization**
+- [x] **Task 8.3.3: Settings Frontend UI & Server Synchronization**
   - **Files**: [`src/pages/Settings.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/Settings.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 5.1 - 5.7.
   - **UI Controls**:
@@ -618,7 +618,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
 ### 8.4 Activity Log Audit Trail & Outage Back-Entry Engine (PRD Sections 4.5, 4.8)
 *Priority: P0 | Target: `server/src/modules/audit/`, `server/src/middleware/back-entry.ts`, `src/pages/ActivityLog.jsx`*
 
-- [ ] **Task 8.4.1: Activity Log Querying, Filtering & CSV Streaming**
+- [x] **Task 8.4.1: Activity Log Querying, Filtering & CSV Streaming**
   - **Files**: `server/src/modules/audit/audit.routes.ts`, `server/src/modules/audit/audit.service.ts`
   - **Spec**: PRD 4.8, 3.3. Manager only (`requireRole(Role.MANAGER)`).
   - **Logic**:
@@ -627,7 +627,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
     - Immutability: Deletions or updates to `ActivityLog` are strictly forbidden (PRD 4.8.3).
   - **Done When**: Manager can filter activity log by event type; CSV download streams complete audit rows.
 
-- [ ] **Task 8.4.2: Temporary Back-Entry Grants & Timestamp Guard**
+- [x] **Task 8.4.2: Temporary Back-Entry Grants & Timestamp Guard**
   - **Files**: `server/src/middleware/back-entry.ts`, `server/src/modules/audit/back-entry.routes.ts`
   - **Spec**: PRD 4.5. Outage paper fallback support.
   - **Logic**:
@@ -639,7 +639,7 @@ Every task is broken down into atomic, unambiguous specifications with exact tar
       - Rejects if `happenedAt` falls inside a locked/closed business day unless day is reopened (PRD 4.5.3).
   - **Done When**: Unauthorized back-entry is blocked; Manager or granted user can back-enter outage paper orders; audit entry is logged.
 
-- [ ] **Task 8.4.3: Activity Log Explorer Frontend Integration**
+- [x] **Task 8.4.3: Activity Log Explorer Frontend Integration**
   - **Files**: [`src/pages/ActivityLog.jsx`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/pages/ActivityLog.jsx), [`src/api/client.js`](file:///c:/Users/Hp/Documents/Mesob%20Restaurant/src/api/client.js)
   - **Spec**: PRD 4.8.
   - **UI Controls**:

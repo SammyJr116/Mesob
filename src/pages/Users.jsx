@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Plus, KeyRound, Unlock, ShieldCheck, Copy, Check } from "lucide-react";
 import { PageHeader, SearchInput, StatCard, EmptyState } from "@/components/ui/shared";
 import Modal from "@/components/ui/Modal";
@@ -7,13 +7,25 @@ import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { stamp, nextId } from "@/lib/datetime";
+import { usersApi } from "@/api/client";
 
 const ROLE_OPTIONS = ["Manager", "Administrator", "Kitchen", "Waiter", "Inventory Staff", "Cleaner", "Security"];
+
+const ROLE_TO_ENUM = {
+  Manager: "MANAGER",
+  Administrator: "ADMIN",
+  Kitchen: "KITCHEN",
+  Waiter: "WAITER",
+  "Inventory Staff": "INVENTORY",
+  Cleaner: "CLEANER",
+  Security: "SECURITY",
+};
 
 export default function Users() {
   const { db, updateItem, insertItem } = useData();
   const { role } = useRole();
   const { users, employees } = db;
+  const [serverUsers, setServerUsers] = useState(null);
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [showAdd, setShowAdd] = useState(false);
@@ -21,49 +33,99 @@ export default function Users() {
   const [issued, setIssued] = useState(null);
   const [locking, setLocking] = useState(null);
 
+  const fetchUsers = async () => {
+    try {
+      const res = await usersApi.list();
+      if (res?.users) {
+        setServerUsers(
+          res.users.map((u) => {
+            let displayRole = "Staff";
+            if (u.role === "ADMIN") displayRole = "Administrator";
+            else if (u.role === "MANAGER") displayRole = "Manager";
+            else if (u.role === "KITCHEN") displayRole = "Kitchen";
+            else if (u.role === "WAITER") displayRole = "Waiter";
+            else if (u.role === "INVENTORY") displayRole = "Inventory Staff";
+            else if (u.role === "CLEANER") displayRole = "Cleaner";
+            else if (u.role === "SECURITY") displayRole = "Security";
+
+            return {
+              id: u.id,
+              username: u.username,
+              fullName: u.employee?.name || u.username,
+              email: u.email || "",
+              role: displayRole,
+              status: u.status === "ACTIVE" ? "Active" : "Inactive",
+              employee: u.employee?.name || "—",
+              employeeId: u.employeeId,
+              mustChange: u.mustChangePassword,
+              locked: !!u.lockedUntil && new Date(u.lockedUntil) > new Date(),
+              failedAttempts: u.failedAttempts,
+            };
+          })
+        );
+      }
+    } catch {
+      // fallback
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const userList = serverUsers || users;
+
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
-    return users.filter((u) => {
+    return userList.filter((u) => {
       const okQ =
         !needle ||
         u.username.toLowerCase().includes(needle) ||
-        u.fullName.toLowerCase().includes(needle) ||
-        u.role.toLowerCase().includes(needle);
+        (u.fullName || "").toLowerCase().includes(needle) ||
+        (u.role || "").toLowerCase().includes(needle);
       const okRole = roleFilter === "All" || u.role === roleFilter;
       return okQ && okRole;
     });
-  }, [users, q, roleFilter]);
-  const active = users.filter((u) => u.status === "Active").length;
-  const admins = users.filter((u) => u.role === "Administrator" && u.status === "Active").length;
-  const locked = users.filter((u) => u.locked).length;
+  }, [userList, q, roleFilter]);
+
+  const active = userList.filter((u) => u.status === "Active").length;
+  const admins = userList.filter((u) => u.role === "Administrator" && u.status === "Active").length;
+  const locked = userList.filter((u) => u.locked).length;
 
   const log = (action, target, oldV, newV, reason) =>
     insertItem("activityLog", { id: nextId(db.activityLog, "L", 10), who: role || "admin1", when: stamp(), action, target, old: String(oldV ?? ""), new: String(newV ?? ""), reason: reason || "" });
 
-  const resetPassword = (u) => {
-    const temp = `tmp-${Math.random().toString(36).slice(2, 10)}`;
-    if (locked >= 3) {
-      // Five failed attempts lock a single account; this is a soft brake on
-      // mass resets rather than that rule.
-      notifyError("Three accounts are already locked. Check the lockout list first.");
+  const resetPassword = async (u) => {
+    try {
+      const res = await usersApi.resetPassword(u.id);
+      const temp = res?.temporaryPassword || `tmp-${Math.random().toString(36).slice(2, 10)}`;
+      setIssued({ user: u, temp });
+      notifySuccess(`Temporary password issued for ${u.username}`);
+      fetchUsers();
+    } catch (err) {
+      notifyError("Could not reset password", err.message);
     }
-    updateItem("users", u.id, { mustChange: true });
-    log("Issued temporary password", u.username, "", "temporary", "Administrator reset");
-    setIssued({ user: u, temp });
-    notifySuccess(`Temporary password issued for ${u.username}`);
   };
 
-  const unlock = (u) => {
-    updateItem("users", u.id, { status: "Active", locked: false });
-    log("Unlocked user", u.username, "Locked", "Active", "");
-    notifySuccess(`${u.username} unlocked`);
+  const unlock = async (u) => {
+    try {
+      await usersApi.unlock(u.id);
+      notifySuccess(`${u.username} unlocked`);
+      fetchUsers();
+    } catch (err) {
+      notifyError("Could not unlock user", err.message);
+    }
   };
 
-  const lock = (u, reason) => {
-    updateItem("users", u.id, { locked: true, status: "Inactive" });
-    log("Locked user", u.username, u.status, "Locked", reason);
+  const lock = async (u, reason) => {
+    try {
+      await usersApi.updateStatus(u.id, "SUSPENDED");
+      notifySuccess(`${u.username} deactivated`);
+      fetchUsers();
+    } catch (err) {
+      notifyError("Could not deactivate user", err.message);
+    }
     setLocking(null);
-    notifySuccess(`${u.username} locked`);
   };
 
   return (
@@ -141,27 +203,51 @@ export default function Users() {
       </p>
 
       {showAdd && (
-        <AddUserModal users={users} employees={employees}
+        <AddUserModal users={userList} employees={employees}
           onClose={() => setShowAdd(false)}
-          onCreate={(draft) => {
-            const id = nextId(users, "U", 2);
+          onCreate={async (draft) => {
             const temp = `tmp-${Math.random().toString(36).slice(2, 10)}`;
-            insertItem("users", { id, status: "Active", lastSignIn: "Never", mustChange: true, locked: false, ...draft });
-            log("User created", draft.username, "", draft.role, "");
-            setShowAdd(false);
-            setIssued({ user: { username: draft.username }, temp });
-            notifySuccess(`${draft.username} created`);
+            try {
+              const matchedEmp = employees.find((e) => e.name === draft.employee);
+              const serverRole = ROLE_TO_ENUM[draft.role] || "WAITER";
+              const res = await usersApi.create({
+                username: draft.username,
+                email: draft.email || `${draft.username}@mesob.et`,
+                role: serverRole,
+                employeeId: matchedEmp?.id,
+              });
+              setShowAdd(false);
+              setIssued({ user: { username: draft.username }, temp: res?.user?.temporaryPassword || temp });
+              notifySuccess(`${draft.username} created`);
+              fetchUsers();
+            } catch (err) {
+              const id = nextId(users, "U", 2);
+              insertItem("users", { id, status: "Active", lastSignIn: "Never", mustChange: true, locked: false, ...draft });
+              log("User created", draft.username, "", draft.role, "");
+              setShowAdd(false);
+              setIssued({ user: { username: draft.username }, temp });
+              notifySuccess(`${draft.username} created (local)`);
+            }
           }} />
       )}
 
       {editing && (
         <EditUserModal user={editing} employees={employees}
           onClose={() => setEditing(null)}
-          onSave={(changes) => {
-            updateItem("users", editing.id, changes);
-            log("User updated", editing.username, editing.role, changes.role || editing.role, "");
+          onSave={async (changes) => {
+            try {
+              if (changes.role) {
+                const serverRole = ROLE_TO_ENUM[changes.role] || "WAITER";
+                await usersApi.updateRole(editing.id, serverRole);
+              }
+              updateItem("users", editing.id, changes);
+              fetchUsers();
+              notifySuccess(`${editing.username} updated`);
+            } catch (err) {
+              updateItem("users", editing.id, changes);
+              notifySuccess(`${editing.username} updated (local)`);
+            }
             setEditing(null);
-            notifySuccess(`${editing.username} updated`);
           }} />
       )}
 

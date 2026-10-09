@@ -152,4 +152,107 @@ export async function authRoutes(app: FastifyInstance) {
       }
     }
   );
+
+  /**
+   * PATCH /api/v1/auth/profile
+   * Self-service profile update (email, phone, name)
+   */
+  app.patch(
+    "/profile",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userPayload = request.user as AuthUserPayload;
+        const body = request.body as { email?: string; phone?: string; name?: string };
+
+        const updated = await authService.updateProfile(userPayload.id, body);
+        return reply.status(200).send({ status: "ok", user: updated });
+      } catch (err: any) {
+        if (err instanceof AuthError) {
+          return reply.status(err.statusCode).send({ error: err.name, message: err.message });
+        }
+        return reply.status(500).send({ error: "Internal Server Error", message: err.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/change-password
+   * Self-service password change (PRD 6.4, 6.5)
+   */
+  app.post(
+    "/change-password",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userPayload = request.user as AuthUserPayload;
+        const body = request.body as { currentPassword?: string; newPassword?: string };
+
+        if (!body.currentPassword || !body.newPassword) {
+          return reply.status(400).send({
+            error: "Validation Error",
+            message: "Current password and new password are required",
+          });
+        }
+
+        const result = await authService.changePassword(userPayload.id, body.currentPassword, body.newPassword);
+        return reply.status(200).send(result);
+      } catch (err: any) {
+        if (err instanceof AuthError) {
+          return reply.status(err.statusCode).send({ error: err.name, message: err.message });
+        }
+        return reply.status(500).send({ error: "Internal Server Error", message: err.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/back-entry-grant
+   * Manager grants temporary back-entry permission (PRD 4.5.2)
+   */
+  app.post(
+    "/back-entry-grant",
+    { preHandler: [requireRole(Role.MANAGER)] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const manager = request.user as AuthUserPayload;
+        const body = request.body as { userId: string; durationHours?: number; reason: string };
+
+        if (!body.userId) {
+          return reply.status(400).send({ error: "Validation Error", message: "userId is required" });
+        }
+
+        const grant = await authService.createBackEntryGrant(manager.id, body);
+        return reply.status(201).send({ status: "ok", grant });
+      } catch (err: any) {
+        if (err instanceof AuthError) {
+          return reply.status(err.statusCode).send({ error: err.name, message: err.message });
+        }
+        return reply.status(500).send({ error: "Internal Server Error", message: err.message });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/auth/back-entry-grant
+   * Check if current user has active back-entry permission
+   */
+  app.get(
+    "/back-entry-grant",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const userPayload = request.user as AuthUserPayload;
+      // Manager always has back-entry permission (PRD 4.5.2)
+      if (userPayload.role === Role.MANAGER) {
+        return reply.send({ hasPermission: true, isManager: true });
+      }
+
+      const grant = await authService.getActiveBackEntryGrant(userPayload.id);
+      return reply.send({
+        hasPermission: !!grant,
+        isManager: false,
+        grant: grant || null,
+      });
+    }
+  );
 }

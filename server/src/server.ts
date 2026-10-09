@@ -21,6 +21,11 @@ import { expensesRoutes } from "./modules/expenses/expenses.routes.js";
 import { assetsRoutes } from "./modules/maintenance/assets.routes.js";
 import { maintenanceRoutes } from "./modules/maintenance/maintenance.routes.js";
 import { securityRoutes } from "./modules/security/security.routes.js";
+import { employeesRoutes } from "./modules/employees/employees.routes.js";
+import { usersRoutes } from "./modules/users/users.routes.js";
+import { customersRoutes } from "./modules/customers/customers.routes.js";
+import { settingsRoutes } from "./modules/settings/settings.routes.js";
+import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { monitorsJob } from "./scheduler/monitors.job.js";
 import { requireRole } from "./middleware/rbac.js";
 import { Role } from "@prisma/client";
@@ -112,6 +117,21 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Security Operations: Visitors, Incidents & Lost/Found (PRD 19)
   await app.register(securityRoutes, { prefix: "/api/v1/security" });
+
+  // Employee Directory Routes (PRD 6.1)
+  await app.register(employeesRoutes, { prefix: "/api/v1/employees" });
+
+  // User Management Routes (PRD 6.2, 6.3)
+  await app.register(usersRoutes, { prefix: "/api/v1/users" });
+
+  // Customer Management Routes (PRD 12)
+  await app.register(customersRoutes, { prefix: "/api/v1/customers" });
+
+  // Settings & Payment Methods Routes (PRD 5)
+  await app.register(settingsRoutes, { prefix: "/api/v1/settings" });
+
+  // Activity Log Audit Trail Routes (PRD 4.8)
+  await app.register(auditRoutes, { prefix: "/api/v1/activity-logs" });
 
   // Example Protected RBAC Route for Testing (PRD 3.3)
   app.get(

@@ -6,6 +6,7 @@ import { useRole } from "@/lib/RoleContext";
 import { useData } from "@/lib/DataContext";
 import { notifySuccess } from "@/lib/notify";
 import { stamp, nextId } from "@/lib/datetime";
+import { authApi } from "@/api/client";
 
 const PRIORITIES = ["Low", "Medium", "High"];
 
@@ -21,7 +22,7 @@ export default function Profile() {
   const [pwBusy, setPwBusy] = useState(false);
   const reporter = current?.name || role || "staff";
 
-  const changePassword = (e) => {
+  const changePassword = async (e) => {
     e.preventDefault();
     setPwError("");
     if (!currentPw) return setPwError("Enter your current password.");
@@ -29,19 +30,16 @@ export default function Profile() {
     if (newPw !== confirmPw) return setPwError("New password and confirmation do not match.");
     if (newPw === currentPw) return setPwError("New password must differ from the current one.");
     setPwBusy(true);
-    insertItem("activityLog", {
-      id: `L${Date.now()}`,
-      who: role || "user",
-      when: stamp(),
-      action: "Changed own password",
-      target: current?.name || "self",
-      old: "",
-      new: "",
-      reason: "",
-    });
-    setPwBusy(false);
-    setCurrentPw(""); setNewPw(""); setConfirmPw("");
-    notifySuccess("Password updated");
+
+    try {
+      await authApi.changePassword(currentPw, newPw);
+      notifySuccess("Password updated");
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch (err) {
+      setPwError(err.message || "Failed to update password");
+    } finally {
+      setPwBusy(false);
+    }
   };
 
   return (

@@ -48,20 +48,26 @@ model User {
 }
 
 model Employee {
-  id             String    @id @default(cuid())
-  employeeNumber String    @unique
-  name           String
-  role           String
-  phone          String
-  email          String?
-  nationalId     String?
-  status         String    @default("Active") // Active, On Leave, Terminated
-  joinedDate     DateTime?
-  userId         String?   @unique
-  user           User?
-  orders         Order[]   @relation("WaiterOrders")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  employeeNumber        String    @unique
+  name                  String
+  role                  String
+  phone                 String
+  email                 String?
+  nationalId            String?
+  department            String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  notes                 String?   @db.Text
+  photoUrl              String?
+  status                String    @default("Active") // Active, On Leave, Terminated
+  joinedDate            DateTime?
+  userId                String?   @unique
+  user                  User?
+  orders                Order[]   @relation("WaiterOrders")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 }
 
 model ActivityLog {
@@ -108,7 +114,22 @@ model Setting {
   inventoryTracking    Boolean  @default(true)
   currentBusinessDate  String   @default("2026-10-08")
   currency             String   @default("ETB")
+  address              String?  @default("Bole Medhanialem, Addis Ababa, Ethiopia")
+  phone                String?  @default("+251 11 661 2345")
+  email                String?  @default("contact@mesob.et")
+  invoiceFooter        String?  @db.Text
+  logoUrl              String?
   updatedAt            DateTime @updatedAt
+}
+
+model PaymentMethodConfig {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  referenceRequired Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  orderIndex        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model NumberSequence {
@@ -406,6 +427,7 @@ model Customer {
   phone        String        @unique
   email        String?
   notes        String?       @db.Text
+  isArchived   Boolean       @default(false)
   orders       Order[]
   reservations Reservation[]
   createdAt    DateTime      @default(now())

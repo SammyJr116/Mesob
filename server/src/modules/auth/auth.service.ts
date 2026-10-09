@@ -167,6 +167,141 @@ export class AuthService {
       },
     });
   }
+
+  /**
+   * Update own profile (phone, email)
+   */
+  async updateProfile(userId: string, data: { email?: string; phone?: string; name?: string }) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { employee: true },
+    });
+
+    if (!user) {
+      throw new AuthError("User not found", 404);
+    }
+
+    if (data.email && data.email !== user.email) {
+      const emailExisting = await prisma.user.findUnique({ where: { email: data.email } });
+      if (emailExisting && emailExisting.id !== userId) {
+        throw new AuthError("Email is already in use by another user", 409);
+      }
+      await prisma.user.update({
+        where: { id: userId },
+        data: { email: data.email },
+      });
+    }
+
+    if (user.employeeId && (data.phone || data.email || data.name)) {
+      await prisma.employee.update({
+        where: { id: user.employeeId },
+        data: {
+          ...(data.phone ? { phone: data.phone } : {}),
+          ...(data.email ? { email: data.email } : {}),
+          ...(data.name ? { name: data.name } : {}),
+        },
+      });
+    }
+
+    return this.getUserById(userId);
+  }
+
+  /**
+   * Change password self-service (PRD 6.4, 6.5)
+   */
+  async changePassword(userId: string, currentPasswordPlain: string, newPasswordPlain: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new AuthError("User not found", 404);
+    }
+
+    if (!newPasswordPlain || newPasswordPlain.length < 8) {
+      throw new AuthError("New password must be at least 8 characters (PRD 6.5.1)", 400);
+    }
+
+    const isValid = await bcrypt.compare(currentPasswordPlain, user.passwordHash);
+    if (!isValid) {
+      throw new AuthError("Current password is incorrect", 400);
+    }
+
+    const passwordHash = await bcrypt.hash(newPasswordPlain, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId,
+        role: user.role,
+        action: "PASSWORD_CHANGE",
+        target: "User",
+        targetId: userId,
+        reason: "User self-changed account password",
+      },
+    });
+
+    return { success: true, message: "Password updated successfully" };
+  }
+
+  /**
+   * Grant back-entry permission to user (PRD 4.5.2, Manager only)
+   */
+  async createBackEntryGrant(managerId: string, data: { userId: string; durationHours?: number; reason: string }) {
+    const targetUser = await prisma.user.findUnique({ where: { id: data.userId } });
+    if (!targetUser) {
+      throw new AuthError("Target user not found", 404);
+    }
+
+    const hours = data.durationHours && data.durationHours > 0 ? data.durationHours : 12;
+    const now = new Date();
+    const endTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
+
+    const grant = await prisma.backEntryGrant.create({
+      data: {
+        userId: data.userId,
+        grantedById: managerId,
+        startTime: now,
+        endTime,
+        reason: data.reason || "Outage recovery paper entry",
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: managerId,
+        role: Role.MANAGER,
+        action: "BACK_ENTRY_GRANT",
+        target: "User",
+        targetId: data.userId,
+        newValue: JSON.stringify({ durationHours: hours, expiresAt: endTime }),
+        reason: data.reason || "Granted back-entry permission",
+      },
+    });
+
+    return grant;
+  }
+
+  /**
+   * Check active back-entry grant for user
+   */
+  async getActiveBackEntryGrant(userId: string) {
+    const now = new Date();
+    const grant = await prisma.backEntryGrant.findFirst({
+      where: {
+        userId,
+        startTime: { lte: now },
+        endTime: { gte: now },
+      },
+      orderBy: { endTime: "desc" },
+    });
+
+    return grant;
+  }
 }
 
 export const authService = new AuthService();

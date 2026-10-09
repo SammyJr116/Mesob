@@ -7,6 +7,7 @@ import { useRole } from "@/lib/RoleContext";
 import { notifySaved, notifyError } from "@/lib/notify";
 import { stamp } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
+import { settingsApi } from "@/api/client";
 
 const SECTIONS = [
   { id: "profile", label: "Restaurant profile", icon: Building2 },
@@ -35,9 +36,37 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setDraft(restaurant);
+    async function loadServerSettings() {
+      try {
+        const res = await settingsApi.get();
+        if (res?.settings) {
+          const s = res.settings;
+          setDraft((prev) => ({
+            ...prev,
+            name: s.restaurantName || prev.name,
+            tin: s.tin || prev.tin,
+            taxRate: Number(s.vatRate) ?? prev.taxRate,
+            serviceCharge: Number(s.serviceChargeRate) ?? prev.serviceCharge,
+            closeHour: s.closingTime || prev.closeHour,
+            delayThreshold: s.delayedTicketMinutes ?? prev.delayThreshold,
+            lowStockThreshold: s.lowStockThreshold ?? prev.lowStockThreshold,
+            inventoryTracking: s.inventoryTracking ?? prev.inventoryTracking,
+            address: s.address || prev.address,
+            phone: s.phone || prev.phone,
+            email: s.email || prev.email,
+            invoiceFooter: s.invoiceFooter || prev.invoiceFooter,
+          }));
+        }
+      } catch {
+        // fallback
+      }
+    }
+    loadServerSettings();
+  }, [restaurant]);
+
+  useEffect(() => {
     setMethods(paymentMethods);
-  }, [restaurant, paymentMethods]);
+  }, [paymentMethods]);
 
   const setField = (key, value) => setDraft((d) => ({ ...d, [key]: value }));
 
@@ -47,7 +76,7 @@ export default function Settings() {
     setParams(next, { replace: true });
   };
 
-  const save = () => {
+  const save = async () => {
     const bad = NUMERIC.find((k) => !Number.isFinite(Number(draft[k])) || Number(draft[k]) < 0);
     if (bad) {
       notifyError("Could not save", `"${bad}" must be a number of 0 or more.`);
@@ -58,6 +87,24 @@ export default function Settings() {
       return;
     }
     setSaving(true);
+    try {
+      await settingsApi.update({
+        restaurantName: draft.name,
+        tin: draft.tin,
+        vatRate: Number(draft.taxRate),
+        serviceChargeRate: Number(draft.serviceCharge),
+        closingTime: draft.closeHour || "04:00",
+        delayedTicketMinutes: Number(draft.delayThreshold) || 20,
+        lowStockThreshold: Number(draft.lowStockThreshold) || 5,
+        inventoryTracking: !!draft.inventoryTracking,
+        address: draft.address,
+        phone: draft.phone,
+        email: draft.email,
+        invoiceFooter: draft.invoiceFooter,
+      });
+    } catch {
+      // fallback
+    }
     setCollection("restaurant", draft);
     setCollection("paymentMethods", methods);
     insertItem("activityLog", {

@@ -88,12 +88,16 @@ export class BillingService {
       throw new BillingError("Only the owning waiter or Manager can record payment (PRD 11.4.1)", 403);
     }
 
-    // Reference required for Bank Transfer and Mobile Money (PRD 5.3.2, 11.4.3)
-    if (
-      (input.paymentMethod === "Bank Transfer" || input.paymentMethod === "Mobile Money") &&
-      (!input.reference || !input.reference.trim())
-    ) {
-      throw new BillingError(`Reference number is required for ${input.paymentMethod} (PRD 11.4.3)`, 400);
+    // Reference required check dynamically from PaymentMethodConfig (PRD 5.3.2, 11.4.3)
+    const config = await prisma.paymentMethodConfig.findFirst({
+      where: { name: { equals: input.paymentMethod } },
+    });
+    const requiresRef = config
+      ? config.referenceRequired
+      : ["Bank Transfer", "Mobile Money", "Telebirr", "CBE Birr"].includes(input.paymentMethod);
+
+    if (requiresRef && (!input.reference || !input.reference.trim())) {
+      throw new BillingError(`Reference number is required for ${input.paymentMethod} (PRD 5.3.2, 11.4.3)`, 400);
     }
 
     // STRICT CHECK: All non-cancelled tickets must be Served before payment (PRD 9.5.3, 11.4.1)
