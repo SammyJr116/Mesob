@@ -11,7 +11,7 @@ import { authApi } from "@/api/client";
 const PRIORITIES = ["Low", "Medium", "High"];
 
 export default function Profile() {
-  const { current, role } = useRole();
+  const { current, role, user } = useRole();
   const { db, insertItem } = useData();
   const { assets, managedLists } = db;
   const [showIssue, setShowIssue] = useState(false);
@@ -49,8 +49,8 @@ export default function Profile() {
         <SectionCard title="Account" className="lg:col-span-1">
           <div className="flex flex-col items-center text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary"><User className="h-8 w-8" /></div>
-            <p className="mt-3 font-display text-lg font-semibold">{current?.name || "Staff"} </p>
-            <p className="text-sm text-muted-foreground">{current?.device} view</p>
+            <p className="mt-3 font-display text-lg font-semibold">{user?.username || current?.name || "Staff"} </p>
+            <p className="text-sm text-muted-foreground">{user?.email || `${current?.name || "Staff"} · ${current?.device || "Desktop"} view`}</p>
           </div>
         </SectionCard>
 

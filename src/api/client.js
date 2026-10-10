@@ -83,7 +83,11 @@ export const api = {
 
 // Domain endpoints
 export const authApi = {
-  login: (credentials) => api.post("/auth/login", credentials),
+  login: (credentials) =>
+    api.post("/auth/login", {
+      login: credentials.login || credentials.username || credentials.email,
+      password: credentials.password,
+    }),
   logout: () => api.post("/auth/logout", {}),
   me: () => api.get("/auth/me"),
   unlock: (userId) => api.post(`/auth/unlock/${userId}`, {}),

@@ -84,7 +84,7 @@ const ROLE_LABEL = {
 };
 
 export default function Layout({ children }) {
-  const { role, setRole, current } = useRole();
+  const { role, setRole, logout, user, current } = useRole();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -129,7 +129,7 @@ export default function Layout({ children }) {
   const isPhoneRole = role === "cleaner" || role === "security";
 
   const handleSwitch = () => {
-    setRole(null);
+    logout();
     navigate("/");
   };
 
@@ -191,7 +191,9 @@ export default function Layout({ children }) {
             {ROLE_LABEL[role]?.[0] || "U"}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-sm font-medium text-sidebar-accent-foreground">{ROLE_LABEL[role]}</p>
+            <p className="truncate text-sm font-medium text-sidebar-accent-foreground">
+              {user?.username ? `${user.username} · ${ROLE_LABEL[role]}` : ROLE_LABEL[role]}
+            </p>
             <p className="truncate text-2xs text-sidebar-foreground/50">{current?.device} view</p>
           </div>
           <button onClick={handleSwitch} aria-label="Switch role" title="Switch role" className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">

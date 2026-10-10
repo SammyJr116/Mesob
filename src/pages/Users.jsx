@@ -206,27 +206,32 @@ export default function Users() {
         <AddUserModal users={userList} employees={employees}
           onClose={() => setShowAdd(false)}
           onCreate={async (draft) => {
-            const temp = `tmp-${Math.random().toString(36).slice(2, 10)}`;
+            const temp = `Mesob${Math.floor(1000 + Math.random() * 9000)}!`;
             try {
               const matchedEmp = employees.find((e) => e.name === draft.employee);
               const serverRole = ROLE_TO_ENUM[draft.role] || "WAITER";
-              const res = await usersApi.create({
+              await usersApi.create({
                 username: draft.username,
                 email: draft.email || `${draft.username}@mesob.et`,
+                password: temp,
                 role: serverRole,
                 employeeId: matchedEmp?.id,
               });
               setShowAdd(false);
-              setIssued({ user: { username: draft.username }, temp: res?.user?.temporaryPassword || temp });
-              notifySuccess(`${draft.username} created`);
+              setIssued({ user: { username: draft.username }, temp });
+              notifySuccess(`${draft.username} created successfully`);
               fetchUsers();
             } catch (err) {
-              const id = nextId(users, "U", 2);
-              insertItem("users", { id, status: "Active", lastSignIn: "Never", mustChange: true, locked: false, ...draft });
-              log("User created", draft.username, "", draft.role, "");
-              setShowAdd(false);
-              setIssued({ user: { username: draft.username }, temp });
-              notifySuccess(`${draft.username} created (local)`);
+              notifyError("Could not create user", err.message);
+              // Fallback to local if server is offline
+              if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+                const id = nextId(users, "U", 2);
+                insertItem("users", { id, status: "Active", lastSignIn: "Never", mustChange: true, locked: false, ...draft });
+                log("User created", draft.username, "", draft.role, "");
+                setShowAdd(false);
+                setIssued({ user: { username: draft.username }, temp });
+                notifySuccess(`${draft.username} created (local offline)`);
+              }
             }
           }} />
       )}

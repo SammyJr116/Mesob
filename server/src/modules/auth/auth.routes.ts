@@ -4,10 +4,21 @@ import { authService, AuthError } from "./auth.service.js";
 import { authenticate, requireRole, AuthUserPayload } from "../../middleware/rbac.js";
 import { Role } from "@prisma/client";
 
-const loginSchema = z.object({
-  login: z.string().min(1, "Username or email is required"),
-  password: z.string().min(1, "Password is required"),
-});
+const loginSchema = z
+  .object({
+    login: z.string().optional(),
+    username: z.string().optional(),
+    email: z.string().optional(),
+    password: z.string().min(1, "Password is required"),
+  })
+  .transform((data) => ({
+    login: (data.login || data.username || data.email || "").trim(),
+    password: data.password,
+  }))
+  .refine((data) => data.login.length > 0, {
+    message: "Username or email is required",
+    path: ["login"],
+  });
 
 export async function authRoutes(app: FastifyInstance) {
   /**
