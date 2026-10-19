@@ -110,7 +110,9 @@ export default function RoleSelect() {
         msg.includes("Failed to fetch") ||
         msg.includes("NetworkError") ||
         msg.includes("refused") ||
-        msg.includes("500")
+        msg.includes("500") ||
+        msg.includes("Database Unreachable") ||
+        msg.includes("MySQL")
       ) {
         setShowOfflineOption(true);
       }

@@ -14,6 +14,7 @@
     "test:phase3": "tsx test-phase3.ts",
     "backup": "tsx scripts/backup.ts",
     "restore": "tsx scripts/restore.ts",
+    "reset:passwords": "tsx scripts/reset-passwords.ts",
     "manual:pdf": "tsx scripts/generate-manual-pdf.ts"
   },
   "dependencies": {

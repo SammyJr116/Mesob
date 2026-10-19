@@ -21,15 +21,42 @@ export default function Orders() {
   const [status, setStatus] = useState("All");
   const [type, setType] = useState("All");
 
+  const getOrderNumber = (o) => String(o?.orderNumber || o?.number || o?.id || "");
+  const getWaiterName = (o) => {
+    if (!o) return "—";
+    if (typeof o.waiter === "string") return o.waiter;
+    if (o.waiter && typeof o.waiter === "object" && o.waiter.name) return o.waiter.name;
+    return "—";
+  };
+  const getCustomerName = (o) => {
+    if (!o) return "";
+    if (typeof o.customer === "string") return o.customer;
+    if (o.customer && typeof o.customer === "object" && o.customer.name) return o.customer.name;
+    return "";
+  };
+  const getTableLabel = (o) => {
+    if (!o) return "Takeaway";
+    if (typeof o.table === "string" && o.table) return o.table;
+    if (o.tables && Array.isArray(o.tables) && o.tables[0]?.table?.number) {
+      return String(o.tables[0].table.number);
+    }
+    return o.type === "Takeaway" ? "Takeaway" : (o.table || "Takeaway");
+  };
+
   const filtered = useMemo(() => {
-    const needle = q.toLowerCase();
-    return orders.filter((o) => {
+    const needle = q.trim().toLowerCase();
+    return (orders || []).filter((o) => {
+      const idStr = getOrderNumber(o).toLowerCase();
+      const waiterStr = getWaiterName(o).toLowerCase();
+      const customerStr = getCustomerName(o).toLowerCase();
+      const tableStr = getTableLabel(o).toLowerCase();
+
       const matchesQ =
         !needle ||
-        o.id.toLowerCase().includes(needle) ||
-        o.waiter.toLowerCase().includes(needle) ||
-        (o.customer || "").toLowerCase().includes(needle) ||
-        (o.table || "takeaway").toLowerCase().includes(needle);
+        idStr.includes(needle) ||
+        waiterStr.includes(needle) ||
+        customerStr.includes(needle) ||
+        tableStr.includes(needle);
       const matchesS = status === "All" || o.status === status;
       const matchesT = type === "All" || o.type === type;
       return matchesQ && matchesS && matchesT;
@@ -38,12 +65,44 @@ export default function Orders() {
 
   /** @type {import("@/components/ui/DataTable").DataTableColumn[]} */
   const columns = [
-    { key: "id", header: "Order", sortable: true, render: (o) => <span className="font-medium">{o.id}</span> },
-    { key: "type", header: "Type", sortable: true, render: (o) => o.type },
-    { key: "table", header: "Table", sortable: true, sortValue: (o) => o.table || "zz", render: (o) => o.table || "Takeaway" },
-    { key: "waiter", header: "Waiter", sortable: true, render: (o) => (isManager ? o.waiter : "—") },
-    { key: "customer", header: "Customer", sortable: true, sortValue: (o) => o.customer || "zz", render: (o) => <span className="text-muted-foreground">{o.customer || "—"}</span> },
-    { key: "created", header: "Created", sortable: true, sortValue: (o) => o.created, render: (o) => <span className="text-muted-foreground">{o.created}</span> },
+    {
+      key: "id",
+      header: "Order",
+      sortable: true,
+      render: (o) => <span className="font-medium">{getOrderNumber(o)}</span>,
+    },
+    { key: "type", header: "Type", sortable: true, render: (o) => o.type || "Dine-in" },
+    {
+      key: "table",
+      header: "Table",
+      sortable: true,
+      sortValue: (o) => getTableLabel(o),
+      render: (o) => getTableLabel(o),
+    },
+    {
+      key: "waiter",
+      header: "Waiter",
+      sortable: true,
+      render: (o) => (isManager ? getWaiterName(o) : "—"),
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      sortable: true,
+      sortValue: (o) => getCustomerName(o) || "zz",
+      render: (o) => <span className="text-muted-foreground">{getCustomerName(o) || "—"}</span>,
+    },
+    {
+      key: "created",
+      header: "Created",
+      sortable: true,
+      sortValue: (o) => o.created || o.createdAt || "",
+      render: (o) => (
+        <span className="text-muted-foreground">
+          {o.created || (o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—")}
+        </span>
+      ),
+    },
     {
       key: "status",
       header: "Status",
@@ -62,7 +121,14 @@ export default function Orders() {
         );
       },
     },
-    { key: "tickets", header: "Tickets", align: "right", sortable: true, sortValue: (o) => o.tickets.length, render: (o) => <span className="text-muted-foreground">{o.tickets.length}</span> },
+    {
+      key: "tickets",
+      header: "Tickets",
+      align: "right",
+      sortable: true,
+      sortValue: (o) => (o.tickets || []).length,
+      render: (o) => <span className="text-muted-foreground">{(o.tickets || []).length}</span>,
+    },
   ];
 
   return (

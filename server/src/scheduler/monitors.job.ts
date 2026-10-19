@@ -118,8 +118,12 @@ export class MonitorsJob {
         await recurringExpensesJob.run();
         await maintenanceJob.run();
         await cleaningJob.run();
-      } catch (err) {
-        console.error("[MonitorsJob] Poller encountered error:", err);
+      } catch (err: any) {
+        if (err?.name === "PrismaClientInitializationError" || err?.message?.includes("Can't reach database")) {
+          console.warn("[MonitorsJob] Waiting for MySQL database to become available at localhost:3306...");
+        } else {
+          console.error("[MonitorsJob] Poller encountered error:", err);
+        }
       }
     }, intervalMs);
   }

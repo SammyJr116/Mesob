@@ -21,7 +21,7 @@ export default function Recipes() {
   const recipe = recipes[selectedId];
   const items = useMemo(() => {
     const needle = q.toLowerCase();
-    return menuItems.filter((m) => !needle || m.name.toLowerCase().includes(needle));
+    return menuItems.filter((m) => !needle || (m.name || "").toLowerCase().includes(needle));
   }, [menuItems, q]);
 
   const saveRecipe = (instructions, lines) => {
@@ -74,7 +74,7 @@ export default function Recipes() {
                   return (
                     <div key={i} className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
                       <span className="font-medium">{l.item}</span>
-                      <span className="text-muted-foreground">{l.qty.toLocaleString()} {inv?.baseUnit || "g"}</span>
+                      <span className="text-muted-foreground">{Number(l.qty || 0).toLocaleString()} {inv?.baseUnit || "g"}</span>
                     </div>
                   );
                 })}

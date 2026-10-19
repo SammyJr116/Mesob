@@ -29,11 +29,11 @@ export default function Incidents() {
 
   const list = useMemo(() => {
     const needle = q.toLowerCase();
-    return incidents.filter((i) => {
+    return (incidents || []).filter((i) => {
       const okQ =
         !needle ||
-        i.description.toLowerCase().includes(needle) ||
-        i.type.toLowerCase().includes(needle) ||
+        (i.description || "").toLowerCase().includes(needle) ||
+        (i.type || "").toLowerCase().includes(needle) ||
         String(i.reported || "").toLowerCase().includes(needle);
       const okStatus = status === "All" || i.status === status;
       return okQ && okStatus;

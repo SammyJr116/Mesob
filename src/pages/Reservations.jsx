@@ -86,7 +86,7 @@ export default function Reservations() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{r.customer} · <span className="text-muted-foreground">{r.phone}</span></p>
-                  <p className="text-xs text-muted-foreground"><Users className="inline h-3.5 w-3.5" /> {r.guests} guests · Table(s) {r.tables.join(", ")} {r.notes && `· ${r.notes}`}</p>
+                  <p className="text-xs text-muted-foreground"><Users className="inline h-3.5 w-3.5" /> {r.guests} guests · Table(s) {(r.tables || []).join(", ")} {r.notes && `· ${r.notes}`}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {r.status === "Confirmed" && <button onClick={() => setStatus(r, "Arrived")} className="btn-outline text-xs">Mark arrived</button>}
@@ -111,7 +111,7 @@ export default function Reservations() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Calendar className="h-4 w-4" /> {r.date}</div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{r.time} · {r.customer}</p>
-                  <p className="text-xs text-muted-foreground">{r.guests} guests · Table(s) {r.tables.join(", ")}</p>
+                  <p className="text-xs text-muted-foreground">{r.guests} guests · Table(s) {(r.tables || []).join(", ")}</p>
                 </div>
                 <StatusBadge status={r.status} />
               </div>

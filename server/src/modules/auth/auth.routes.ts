@@ -86,9 +86,18 @@ export async function authRoutes(app: FastifyInstance) {
       }
 
       request.log.error(err);
+      const errMsg = err?.message || "";
+      const isDbError =
+        errMsg.includes("Can't reach database") ||
+        err?.name === "PrismaClientInitializationError" ||
+        errMsg.includes("ECONNREFUSED") ||
+        errMsg.includes("ETIMEDOUT");
+
       return reply.status(500).send({
-        error: "Internal Server Error",
-        message: "An unexpected error occurred during sign-in",
+        error: isDbError ? "Database Unreachable" : "Internal Server Error",
+        message: isDbError
+          ? "Unable to connect to MySQL database at localhost:3306. Please ensure Laragon MySQL service is started."
+          : (errMsg || "An unexpected error occurred during sign-in"),
       });
     }
   });

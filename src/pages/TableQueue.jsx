@@ -16,7 +16,9 @@ export default function TableQueue() {
   const cleaning = tables.filter((t) => t.status === "Cleaning");
 
   const taskFor = (tableNumber) =>
-    cleaningTasks.find((t) => t.type === "table" && t.area === `Table ${tableNumber}` && t.status !== "Completed");
+    (cleaningTasks || []).find(
+      (t) => t.type === "table" && (t.area === `Table ${tableNumber}` || t.area?.startsWith(`Table ${tableNumber} `)) && t.status !== "Completed"
+    );
 
   const start = async (t) => {
     const task = taskFor(t.number);

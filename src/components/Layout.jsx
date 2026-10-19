@@ -44,6 +44,7 @@ const NAV_BY_ROLE = {
     { to: "/lost-found", label: "Lost & Found", icon: ScrollText },
   ],
   admin: [
+    { to: "/orders", label: "Orders", icon: ClipboardList },
     { to: "/users", label: "Users", icon: Users },
     { to: "/employees", label: "Employees", icon: UserCog },
     { to: "/activity-log", label: "Activity Log", icon: ScrollText },

@@ -25,11 +25,11 @@ import { ROLES, isPrivileged } from "./roles.js";
 
 /** Role id → the seeded person whose records that role is responsible for. */
 const PERSONA = {
-  waiter: ["Selam T."],
-  cleaner: ["Tigist"],
-  kitchen: [],
-  inventory: [],
-  security: [],
+  waiter: ["Selam T.", "Dawit M.", "Hanna L.", "Waiter"],
+  cleaner: ["Tigist", "Tigist A.", "Solomon", "Solomon G."],
+  kitchen: ["Chef Abebe", "Abebe"],
+  inventory: ["Yonas", "Yonas K."],
+  security: ["Robel", "Robel S."],
 };
 
 /** Role id → shorter labels the data uses for the same role. */
@@ -42,30 +42,46 @@ function roleName(role) {
 }
 
 /** Every name a role may own records under: its role label plus its persona. */
-function owners(role) {
+export function owners(role) {
   return [roleName(role), ...(LABELS[role] || []), ...(PERSONA[role] || [])].filter(Boolean);
 }
 
 /** True when `value` is one of the names this role owns. */
-function ownedBy(value, role) {
-  return owners(role).includes(value);
+export function ownedBy(value, role) {
+  if (!value) return false;
+  return owners(role).some((o) => o.toLowerCase() === String(value).toLowerCase());
 }
 
 /** Matches an owner that carries extra detail, such as "Solomon (vendor: GenPro)". */
-function ownedByDetail(value, role) {
+export function ownedByDetail(value, role) {
   if (typeof value !== "string") return false;
   return owners(role).some((name) => value.startsWith(`${name} (`));
 }
 
-/** True when this role sees every record of a kind. */
-function seesAll(role) {
-  return isPrivileged(role) || role === "kitchen" || role === "inventory";
+/** True when this role sees every record of a kind.
+ * Per PRD 3.2.4 & 9.9.3: All waiters see all tables and orders. */
+export function seesAll(role) {
+  return isPrivileged(role) || role === "kitchen" || role === "inventory" || role === "waiter";
 }
 
-/** Orders: a waiter works the orders they own. Everyone else works the live queue. */
+/** Orders: all waiters, managers, kitchen and inventory see all orders (PRD 9.9.3). */
 export function visibleOrders(orders, role) {
+  if (!orders || !Array.isArray(orders)) return [];
   if (seesAll(role)) return orders;
-  return orders.filter((o) => ownedBy(o.waiter, role));
+  return orders.filter((o) => {
+    const waiter = typeof o.waiter === "string" ? o.waiter : (o.waiter?.name || "");
+    return ownedBy(waiter, role);
+  });
+}
+
+/** True when user has edit authority on an order (Manager or the owning Waiter, PRD 9.9.3). */
+export function canEditOrder(order, role, currentUserName = "") {
+  if (isPrivileged(role)) return true;
+  if (role !== "waiter") return false;
+  const waiterStr = typeof order?.waiter === "string" ? order.waiter : (order?.waiter?.name || "");
+  if (!waiterStr) return true;
+  if (currentUserName && waiterStr.toLowerCase().includes(currentUserName.toLowerCase())) return true;
+  return ownedBy(waiterStr, role);
 }
 
 /** Cleaning: a cleaner sees their own assignments plus the shared queue. */

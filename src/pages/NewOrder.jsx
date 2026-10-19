@@ -10,12 +10,13 @@ import { ROLES } from "@/lib/roles";
 import { nextNumber, nextId, clockTime, isItemInMealPeriod } from "@/lib/datetime";
 import { notifySuccess } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { ordersApi } from "@/api/client";
 
 export default function NewOrder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { db, insertItem, updateItem } = useData();
-  const { role } = useRole();
+  const { role, user } = useRole();
   const { menuItems, menuCategories, tables, orders, notifications, restaurant } = db;
   const [type, setType] = useState("Dine-in");
   const [table, setTable] = useState(() => searchParams.get("table") || "");
@@ -62,7 +63,7 @@ export default function NewOrder() {
     const number = nextNumber(orders, restaurant);
     const id = `${restaurant.orderPrefix}${number}`;
     const now = clockTime();
-    const server = ROLES.find((r) => r.id === role)?.name || "Unassigned";
+    const server = user?.employee?.name || user?.username || ROLES.find((r) => r.id === role)?.name || "Unassigned";
     insertItem("orders", {
       id,
       number,
@@ -80,9 +81,24 @@ export default function NewOrder() {
       invoice: null,
     });
     if (type === "Dine-in") {
-      const target = tables.find((t) => t.number === table);
-      if (target) updateItem("tables", target.id, { status: "Occupied", order: id });
+      const target = tables.find((t) => String(t.number) === String(table));
+      if (target) updateItem("tables", target.id, { status: "Occupied", order: id, waiter: server });
     }
+
+    // Best-effort backend synchronization if server is running
+    ordersApi.create({
+      type,
+      tableNumber: type === "Dine-in" ? String(table) : undefined,
+      customerName: type === "Takeaway" ? (customer.trim() || "Walk-in") : undefined,
+      customerPhone: type === "Takeaway" ? phone.trim() : undefined,
+      items: cart.map((c) => ({
+        menuItemId: c.id,
+        quantity: c.qty,
+        notes: c.note || undefined,
+      })),
+    }).catch(() => {
+      // Offline fallback: already in local DataContext
+    });
     insertItem("notifications", {
       id: nextId(notifications, "N", 2),
       event: "New kitchen ticket",

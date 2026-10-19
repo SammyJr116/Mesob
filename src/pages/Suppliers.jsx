@@ -16,8 +16,11 @@ export default function Suppliers() {
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
-    return suppliers.filter(
-      (s) => !needle || s.name.toLowerCase().includes(needle) || s.contact.toLowerCase().includes(needle)
+    return (suppliers || []).filter(
+      (s) =>
+        !needle ||
+        (s.name || "").toLowerCase().includes(needle) ||
+        (s.contact || s.contactPerson || "").toLowerCase().includes(needle)
     );
   }, [suppliers, q]);
 

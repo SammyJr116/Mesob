@@ -32,14 +32,15 @@ export default function Dashboard() {
   const today = businessDate();
 
   const figures = useMemo(() => {
-    const openOrders = orders.filter((o) => o.status === "Active" || o.status === "Served");
-    const tickets = orders.flatMap((o) => o.tickets);
+    const safeOrders = orders || [];
+    const openOrders = safeOrders.filter((o) => o.status === "Active" || o.status === "Served");
+    const tickets = safeOrders.flatMap((o) => o.tickets || []);
     const preparing = tickets.filter((t) => t.status === "Preparing").length;
     const ready = tickets.filter((t) => t.status === "Ready").length;
 
     // Sales come from what the store actually holds, not a typed-in literal,
     // and use the same billing maths and live rates as OrderDetail.
-    const paid = orders.filter((o) => o.status === "Completed");
+    const paid = safeOrders.filter((o) => o.status === "Completed");
     const bills = paid.map((o) => calcBill(o, restaurant));
     const sum = (pick) => bills.reduce((total, b) => total + pick(b), 0);
     const netSales = sum((b) => b.netSales);
@@ -50,14 +51,14 @@ export default function Dashboard() {
       openOrders,
       preparing,
       ready,
-      lowStock: inventoryItems.filter((i) => i.status === "Low"),
-      pendingPurchases: purchases.filter((p) => p.status === "Requested"),
-      pendingCleaning: cleaningTasks.filter((c) => c.status === "Pending" || c.status === "Overdue"),
-      openMaintenance: maintenanceRequests.filter((m) => m.status !== "Completed"),
-      emergencyReview: purchases.filter((p) => p.emergency && !p.reviewed),
-      pendingExpenses: expenses.filter((e) => e.status === "Pending confirmation"),
-      unresolvedIncidents: incidents.filter((i) => i.status !== "Resolved"),
-      expiredWarranty: assets.filter((a) => toComparable(a.warranty) < toComparable(today)),
+      lowStock: (inventoryItems || []).filter((i) => i.status === "Low"),
+      pendingPurchases: (purchases || []).filter((p) => p.status === "Requested"),
+      pendingCleaning: (cleaningTasks || []).filter((c) => c.status === "Pending" || c.status === "Overdue"),
+      openMaintenance: (maintenanceRequests || []).filter((m) => m.status !== "Completed"),
+      emergencyReview: (purchases || []).filter((p) => p.emergency && !p.reviewed),
+      pendingExpenses: (expenses || []).filter((e) => e.status === "Pending confirmation"),
+      unresolvedIncidents: (incidents || []).filter((i) => i.status !== "Resolved"),
+      expiredWarranty: (assets || []).filter((a) => toComparable(a.warranty) < toComparable(today)),
       netSales,
       tax,
       service,
@@ -65,11 +66,11 @@ export default function Dashboard() {
     };
   }, [orders, inventoryItems, purchases, cleaningTasks, maintenanceRequests, incidents, assets, expenses, today, restaurant]);
 
-  const delayedTickets = orders
-    .flatMap((o) => o.tickets.map((t) => ({ order: o, ticket: t })))
+  const delayedTickets = (orders || [])
+    .flatMap((o) => (o.tickets || []).map((t) => ({ order: o, ticket: t })))
     .filter(({ ticket }) => ticket.status !== "Ready" && ticket.status !== "Served")
     .map(({ order, ticket }) => ({ order, ticket, waited: minutesSince(ticket.submittedAt) }))
-    .filter((x) => x.waited !== null && x.waited >= restaurant.delayThreshold);
+    .filter((x) => x.waited !== null && x.waited >= (restaurant?.delayThreshold || 20));
 
   const alerts = [
     ...delayedTickets.map((d) => ({
@@ -124,7 +125,7 @@ export default function Dashboard() {
     ...(alertsFromNotifications(db.notifications)),
   ];
 
-  const todayReservations = reservations.filter(
+  const todayReservations = (reservations || []).filter(
     (r) => r.date === "Today" && (r.status === "Confirmed" || r.status === "Pending")
   );
 
@@ -138,7 +139,7 @@ export default function Dashboard() {
         <div className="relative flex flex-col gap-2 px-6 py-7 sm:px-8 sm:py-9">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 border border-gold/40 px-3 py-0.5 text-2xs font-bold text-gold uppercase tracking-wider backdrop-blur-sm">
-              <MesobIcon className="h-3 w-3 text-gold-300" /> መሶብ · {restaurant.name}
+              <MesobIcon className="h-3 w-3 text-gold-300" /> መሶብ · {restaurant?.name || "Mesob"}
             </span>
             <span className="text-cream/60 text-xs">·</span>
             <span className="text-xs text-cream/80 font-medium">Bole Road, Addis Ababa</span>
@@ -147,7 +148,7 @@ export default function Dashboard() {
             Taste the Soul of Ethiopia · Today's Dining Service
           </h1>
           <p className="text-sm text-cream/85 max-w-2xl leading-relaxed">
-            <em>"Food shared from one Mesob brings hearts together."</em> · Business day {today} · Open until {restaurant.closingTime}
+            <em>"Food shared from one Mesob brings hearts together."</em> · Business day {today} · Open until {restaurant?.closingTime || "04:00"}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <button onClick={() => navigate("/reports")} className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-walnut-950 shadow-gold transition hover:brightness-105">
@@ -161,7 +162,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-        <StatCard label="Orders today" value={orders.length} sub={`${figures.openOrders.length} open`} icon={ClipboardList} tone="gold" onClick={() => navigate("/orders")} />
+        <StatCard label="Orders today" value={(orders || []).length} sub={`${figures.openOrders.length} open`} icon={ClipboardList} tone="gold" onClick={() => navigate("/orders")} />
         <StatCard
           label="Net sales (paid)"
           value={etb(figures.netSales)}
@@ -171,7 +172,7 @@ export default function Dashboard() {
           onClick={() => navigate("/reports")}
         />
         <StatCard label="Tickets preparing" value={figures.preparing} sub={`${figures.ready} ready`} icon={ChefHat} tone="berbere" onClick={() => navigate("/kitchen")} />
-        <StatCard label="Tables reserved" value={tables.filter((t) => t.status === "Reserved").length} sub="today" icon={Table2} tone="terracotta" onClick={() => navigate("/tables")} />
+        <StatCard label="Tables reserved" value={(tables || []).filter((t) => t.status === "Reserved").length} sub="today" icon={Table2} tone="terracotta" onClick={() => navigate("/tables")} />
         <StatCard label="Low stock" value={figures.lowStock.length} sub="items" icon={Boxes} tone="gold" onClick={() => navigate("/inventory")} />
       </div>
 
@@ -179,7 +180,7 @@ export default function Dashboard() {
         <StatCard label="Pending purchases" value={figures.pendingPurchases.length} icon={ShoppingCart} tone="terracotta" onClick={() => navigate("/purchases")} />
         <StatCard label="Pending cleaning" value={figures.pendingCleaning.length} icon={Sparkles} tone="gold" onClick={() => navigate("/cleaning")} />
         <StatCard label="Open maintenance" value={figures.openMaintenance.length} icon={Wrench} tone="berbere" onClick={() => navigate("/maintenance")} />
-        <StatCard label="Unread alerts" value={db.notifications.filter((n) => !n.read).length} icon={Bell} tone="wood" onClick={() => navigate("/notifications")} />
+        <StatCard label="Unread alerts" value={(db.notifications || []).filter((n) => !n.read).length} icon={Bell} tone="wood" onClick={() => navigate("/notifications")} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-3">

@@ -52,8 +52,8 @@ export default function MyTasks() {
     });
     // Finishing a table-clean is what actually releases the table.
     if (t.type === "table") {
-      const num = String(t.area || "").replace(/^Table\s+/i, "");
-      const table = tables.find((x) => x.number === num);
+      const num = String(t.area || "").replace(/^Table\s+/i, "").replace(/\s*\(.*\)$/, "").trim();
+      const table = (tables || []).find((x) => String(x.number) === num);
       if (table && table.status === "Cleaning") {
         updateItem("tables", table.id, { status: "Available", order: null });
       }

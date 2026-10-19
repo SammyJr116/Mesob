@@ -28,7 +28,7 @@ export default function MenuAvailability() {
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
-    return db.menuItems.filter((m) => m.status === "Active" && (!needle || m.name.toLowerCase().includes(needle)));
+    return db.menuItems.filter((m) => m.status === "Active" && (!needle || (m.name || "").toLowerCase().includes(needle)));
   }, [db.menuItems, q]);
 
   return (

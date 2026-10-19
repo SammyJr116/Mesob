@@ -405,7 +405,7 @@ function sumOf(rows, key) {
 
 function buildReport(db) {
   const { orders, restaurant } = db;
-  const orderRows = orders.map((o) => {
+  const orderRows = (orders || []).map((o) => {
     const bill = calcBill(o, restaurant);
     const payments = o.payments || [];
     return {
@@ -421,9 +421,9 @@ function buildReport(db) {
       service: round2(bill.serviceCharge),
       discount: round2(bill.discount),
       total: round2(bill.totalPayable),
-      items: bill.lines.filter((l) => !l.cancelled),
+      items: (bill.lines || []).filter((l) => !l.cancelled),
       payments: o.status === "Completed" ? payments : [],
-      tickets: o.tickets,
+      tickets: o.tickets || [],
     };
   });
   return { orders: orderRows };
@@ -517,7 +517,7 @@ function InventoryTab({ db }) {
             { key: "date", header: "When", sortable: true, sortValue: (r) => r.date, render: (r) => <span className="text-muted-foreground">{r.date}</span> },
             { key: "item", header: "Item", sortable: true, render: (r) => <span className="font-medium">{r.item}</span> },
             { key: "type", header: "Type", sortable: true, render: (r) => r.type },
-            { key: "qty", header: "Change", align: "right", sortable: true, render: (r) => <span className={r.qty < 0 ? "text-berbere-600" : "text-sage-600"}>{r.qty > 0 ? "+" : ""}{r.qty.toLocaleString()}</span> },
+            { key: "qty", header: "Change", align: "right", sortable: true, render: (r) => <span className={(r.qty || 0) < 0 ? "text-berbere-600" : "text-sage-600"}>{(r.qty || 0) > 0 ? "+" : ""}{Number(r.qty || 0).toLocaleString()}</span> },
             { key: "reason", header: "Reason", render: (r) => <span className="text-muted-foreground">{r.reason}</span> },
           ]}
           rows={movements}
@@ -534,7 +534,7 @@ function InventoryTab({ db }) {
             caption="Waste movements by item and reason"
             columns={[
               { key: "item", header: "Item", sortable: true, render: (r) => <span className="font-medium">{r.item}</span> },
-              { key: "qty", header: "Wasted", align: "right", sortable: true, render: (r) => r.qty.toLocaleString() },
+              { key: "qty", header: "Wasted", align: "right", sortable: true, render: (r) => Number(r.qty || 0).toLocaleString() },
               { key: "reason", header: "Reason", sortable: true, render: (r) => r.reason },
               { key: "date", header: "When", sortable: true, sortValue: (r) => r.date, render: (r) => <span className="text-muted-foreground">{r.date}</span> },
             ]}

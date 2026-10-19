@@ -42,7 +42,7 @@ async function request(path, options = {}) {
       }
     }
 
-    const message = errorData?.error || errorData?.message || `Request failed with status ${response.status}`;
+    const message = errorData?.message || errorData?.error || `Request failed with status ${response.status}`;
 
     if (response.status === 401) {
       if (typeof window !== "undefined") {

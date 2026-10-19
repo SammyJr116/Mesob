@@ -7,7 +7,7 @@ import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { stamp, nextId } from "@/lib/datetime";
-import { usersApi } from "@/api/client";
+import { usersApi, employeesApi } from "@/api/client";
 
 const ROLE_OPTIONS = ["Manager", "Administrator", "Kitchen", "Waiter", "Inventory Staff", "Cleaner", "Security"];
 
@@ -26,12 +26,31 @@ export default function Users() {
   const { role } = useRole();
   const { users, employees } = db;
   const [serverUsers, setServerUsers] = useState(null);
+  const [serverEmployees, setServerEmployees] = useState(null);
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState(null);
   const [issued, setIssued] = useState(null);
   const [locking, setLocking] = useState(null);
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await employeesApi.list();
+      if (res?.employees) {
+        setServerEmployees(
+          res.employees.map((e) => ({
+            id: e.id,
+            name: e.name,
+            number: e.employeeNumber,
+            role: e.role,
+          }))
+        );
+      }
+    } catch {
+      // fallback
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -71,16 +90,18 @@ export default function Users() {
 
   useEffect(() => {
     fetchUsers();
+    fetchEmployees();
   }, []);
 
   const userList = serverUsers || users;
+  const employeeList = serverEmployees || employees;
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
     return userList.filter((u) => {
       const okQ =
         !needle ||
-        u.username.toLowerCase().includes(needle) ||
+        (u.username || "").toLowerCase().includes(needle) ||
         (u.fullName || "").toLowerCase().includes(needle) ||
         (u.role || "").toLowerCase().includes(needle);
       const okRole = roleFilter === "All" || u.role === roleFilter;
@@ -91,6 +112,7 @@ export default function Users() {
   const active = userList.filter((u) => u.status === "Active").length;
   const admins = userList.filter((u) => u.role === "Administrator" && u.status === "Active").length;
   const locked = userList.filter((u) => u.locked).length;
+  const mustChangeCount = userList.filter((u) => u.mustChange).length;
 
   const log = (action, target, oldV, newV, reason) =>
     insertItem("activityLog", { id: nextId(db.activityLog, "L", 10), who: role || "admin1", when: stamp(), action, target, old: String(oldV ?? ""), new: String(newV ?? ""), reason: reason || "" });
@@ -136,10 +158,10 @@ export default function Users() {
         actions={<button onClick={() => setShowAdd(true)} className="btn-primary"><Plus className="h-4 w-4" /> New user</button>}
       />
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="Total users" value={users.length} />
+        <StatCard label="Total users" value={userList.length} />
         <StatCard label="Active" value={active} tone="sage" />
         <StatCard label="Administrators" value={admins} tone="gold" />
-        <StatCard label="Must change password" value={users.filter((u) => u.mustChange).length} tone="berbere" />
+        <StatCard label="Must change password" value={mustChangeCount} tone="berbere" />
         <StatCard label="Locked out" value={locked} sub="locked by an Administrator" tone="berbere" />
       </div>
 
@@ -203,12 +225,12 @@ export default function Users() {
       </p>
 
       {showAdd && (
-        <AddUserModal users={userList} employees={employees}
+        <AddUserModal users={userList} employees={employeeList}
           onClose={() => setShowAdd(false)}
           onCreate={async (draft) => {
             const temp = `Mesob${Math.floor(1000 + Math.random() * 9000)}!`;
             try {
-              const matchedEmp = employees.find((e) => e.name === draft.employee);
+              const matchedEmp = draft.employee && draft.employee !== "—" ? employeeList.find((e) => e.name === draft.employee) : null;
               const serverRole = ROLE_TO_ENUM[draft.role] || "WAITER";
               await usersApi.create({
                 username: draft.username,
@@ -237,7 +259,7 @@ export default function Users() {
       )}
 
       {editing && (
-        <EditUserModal user={editing} employees={employees}
+        <EditUserModal user={editing} employees={employeeList}
           onClose={() => setEditing(null)}
           onSave={async (changes) => {
             try {

@@ -19,8 +19,8 @@ export default function Visitors() {
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
-    return visitors.filter(
-      (v) => !needle || v.name.toLowerCase().includes(needle) || v.purpose.toLowerCase().includes(needle)
+    return (visitors || []).filter(
+      (v) => !needle || (v.name || "").toLowerCase().includes(needle) || (v.purpose || "").toLowerCase().includes(needle)
     );
   }, [visitors, q]);
   const checkedIn = visitors.filter((v) => !v.checkOut).length;

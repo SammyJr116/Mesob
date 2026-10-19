@@ -80,9 +80,9 @@ export default function Inventory() {
     { key: "name", header: "Item", sortable: true, render: (i) => <span className="font-medium">{i.name}</span> },
     { key: "category", header: "Category", sortable: true, render: (i) => <span className="text-muted-foreground">{i.category}</span> },
     { key: "baseUnit", header: "Unit", sortable: true, render: (i) => <span className="text-muted-foreground">{i.baseUnit}</span> },
-    { key: "qty", header: "In stock", align: "right", sortable: true, render: (i) => i.qty.toLocaleString() },
-    { key: "min", header: "Minimum", align: "right", sortable: true, render: (i) => <span className="text-muted-foreground">{i.min.toLocaleString()}</span> },
-    { key: "reorder", header: "Reorder at", align: "right", sortable: true, render: (i) => <span className="text-muted-foreground">{(i.reorder || 0).toLocaleString()}</span> },
+    { key: "qty", header: "In stock", align: "right", sortable: true, render: (i) => Number(i.qty ?? 0).toLocaleString() },
+    { key: "min", header: "Minimum", align: "right", sortable: true, render: (i) => <span className="text-muted-foreground">{Number(i.min ?? 0).toLocaleString()}</span> },
+    { key: "reorder", header: "Reorder at", align: "right", sortable: true, render: (i) => <span className="text-muted-foreground">{Number(i.reorder ?? 0).toLocaleString()}</span> },
     { key: "supplier", header: "Supplier", sortable: true, render: (i) => <span className="text-muted-foreground">{i.supplier}</span> },
     { key: "status", header: "Status", sortable: true, render: (i) => (
       <span className={i.status === "Low" ? "font-medium text-berbere-600" : "text-sage-600"}>{i.status}</span>
@@ -93,7 +93,7 @@ export default function Inventory() {
     { key: "item", header: "Item", sortable: true, render: (m) => <span className="font-medium">{m.item}</span> },
     { key: "type", header: "Type", sortable: true, render: (m) => <span className="text-muted-foreground">{m.type}</span> },
     { key: "qty", header: "Change", align: /** @type {"right"} */ ("right"), sortable: true, render: (m) => (
-      <span className={cn("font-semibold", m.qty > 0 ? "text-sage-600" : "text-berbere-600")}>{m.qty > 0 ? "+" : ""}{m.qty.toLocaleString()}</span>
+      <span className={cn("font-semibold", (m.qty || 0) > 0 ? "text-sage-600" : "text-berbere-600")}>{(m.qty || 0) > 0 ? "+" : ""}{Number(m.qty || 0).toLocaleString()}</span>
     ) },
     { key: "reason", header: "Reason", sortable: true, render: (m) => <span className="text-muted-foreground">{m.reason}</span> },
     { key: "user", header: "By", sortable: true, render: (m) => <span className="text-muted-foreground">{m.user}</span> },

@@ -59,7 +59,7 @@ export default function Employees() {
       employeeList.filter((e) => {
         const okQ =
           !q ||
-          e.name.toLowerCase().includes(q.toLowerCase()) ||
+          (e.name || "").toLowerCase().includes(q.toLowerCase()) ||
           (e.number || "").toLowerCase().includes(q.toLowerCase()) ||
           (e.email || "").toLowerCase().includes(q.toLowerCase());
         const okD = dept === "All" || e.department === dept;
@@ -125,7 +125,7 @@ export default function Employees() {
       lines.slice(1).forEach((line) => {
         const cells = line.split(",").map((c) => c.trim());
         const name = cells[idx("name")] || "";
-        if (!name || pool.some((e) => e.name.toLowerCase() === name.toLowerCase())) {
+        if (!name || pool.some((e) => (e.name || "").toLowerCase() === name.toLowerCase())) {
           skipped.push(name || line);
           return;
         }

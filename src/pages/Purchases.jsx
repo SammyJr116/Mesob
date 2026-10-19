@@ -102,7 +102,7 @@ export default function Purchases() {
                   <td className="px-4 py-3 font-medium">{p.id}{p.emergency && <AlertTriangle aria-label="Emergency purchase" className="ml-1 inline h-3.5 w-3.5 text-berbere-500" />}</td>
                   <td className="px-4 py-3">{p.supplier}</td>
                   <td className="px-4 py-3 text-muted-foreground">{p.date}</td>
-                  <td className="px-4 py-3 text-right">{p.lines}</td>
+                  <td className="px-4 py-3 text-right">{Array.isArray(p.lines) ? p.lines.length : (p.lines ?? 0)}</td>
                   <td className="px-4 py-3 text-right font-medium">{etb(p.total)}</td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                   <td className="px-4 py-3">

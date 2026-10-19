@@ -45,6 +45,179 @@ const STORAGE_KEY = "rms_data_v1";
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
+export function normalizeServerOrder(o) {
+  if (!o) return o;
+  const tableNum = o.table || o.tables?.[0]?.table?.number || (o.type === "Dine-in" ? "1" : null);
+  const waiterName = typeof o.waiter === "string" ? o.waiter : (o.waiter?.name || "Selam T.");
+  const customerName = typeof o.customer === "string" ? o.customer : (o.customer?.name || null);
+  const orderNum = o.number || (o.orderNumber ? String(o.orderNumber).replace(/^ORD-/, "") : String(o.id));
+  const createdStr = o.created || (o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "12:00");
+  const ticketsArr = (o.tickets || []).map((t, idx) => ({
+    ...t,
+    round: t.round ?? t.roundNumber ?? (idx + 1),
+    status: t.status || "Submitted",
+    submittedAt: t.submittedAt || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "12:00"),
+    items: (t.items || []).map((ti) => ({
+      ...ti,
+      name: ti.name || ti.menuItem?.name || "Item",
+      variant: ti.variant || ti.variantName || "Regular",
+      qty: ti.qty ?? ti.quantity ?? 1,
+      price: ti.price ?? (ti.unitPrice !== undefined ? Number(ti.unitPrice) : 0),
+      cancelled: !!ti.cancelled || ti.status === "Cancelled",
+      cancelReason: ti.cancelReason || ti.reason || "",
+      addons: Array.isArray(ti.addons)
+        ? ti.addons
+        : (ti.addonsJson ? JSON.parse(ti.addonsJson) : []),
+      note: ti.note || ti.notes || "",
+    })),
+  }));
+
+  const invoiceStr = o.invoice?.invoiceNumber || (typeof o.invoice === "string" ? o.invoice : null);
+
+  return {
+    ...o,
+    id: o.orderNumber || o.id,
+    orderId: o.id,
+    number: orderNum,
+    table: tableNum,
+    waiter: waiterName,
+    customer: customerName,
+    created: createdStr,
+    guests: o.guests ?? o.guestCount ?? 1,
+    status: o.status || "Active",
+    type: o.type || (tableNum ? "Dine-in" : "Takeaway"),
+    notes: o.notes || "",
+    discount: Number(o.discountValue ?? o.discount ?? 0),
+    invoice: invoiceStr,
+    payments: o.payments || [],
+    tickets: ticketsArr,
+  };
+}
+
+export function normalizeServerTable(t, allOrders = []) {
+  if (!t) return t;
+  const activeOrd = t.activeOrder || null;
+  let orderId = t.order || activeOrd?.orderNumber || (activeOrd?.id ? String(activeOrd.id) : null);
+  let waiterName = t.waiter || activeOrd?.waiter?.name || (typeof activeOrd?.waiter === "string" ? activeOrd.waiter : null);
+
+  // If table is Occupied but order link is missing, match from active orders
+  if (!orderId && t.status === "Occupied" && Array.isArray(allOrders)) {
+    const match = allOrders.find(
+      (o) => String(o.table) === String(t.number) && o.status !== "Completed" && o.status !== "Cancelled"
+    );
+    if (match) {
+      orderId = match.id || match.orderNumber;
+      if (!waiterName) {
+        waiterName = typeof match.waiter === "string" ? match.waiter : (match.waiter?.name || null);
+      }
+    }
+  }
+
+  return {
+    ...t,
+    id: t.id,
+    number: String(t.number),
+    seats: Number(t.seats || 2),
+    section: t.section || "Main Hall",
+    status: t.status || "Available",
+    order: orderId || null,
+    waiter: waiterName || null,
+    reservation: t.reservation || null,
+  };
+}
+
+export function normalizeServerReservation(r) {
+  if (!r) return r;
+  const customerName = typeof r.customer === "string" ? r.customer : (r.customer?.name || "Guest");
+  const phoneStr = typeof r.phone === "string" ? r.phone : (r.customer?.phone || "");
+  const tablesArr = Array.isArray(r.tables)
+    ? r.tables.map((t) => (typeof t === "string" ? t : String(t.table?.number || t.number || t.tableId || t)))
+    : ["1"];
+  const resId = r.reservationNumber || r.id;
+  const dateStr = r.date === "Today" || r.date === new Date().toISOString().slice(0, 10) ? "Today" : (r.date || "Today");
+
+  return {
+    ...r,
+    id: resId,
+    customer: customerName,
+    phone: phoneStr,
+    date: dateStr,
+    time: r.time || "19:00",
+    guests: Number(r.guests ?? r.guestCount ?? 2),
+    tables: tablesArr,
+    status: r.status || "Confirmed",
+    notes: r.notes || "",
+  };
+}
+
+export function normalizeServerCleaningTask(t) {
+  if (!t) return t;
+  const areaName = t.area || (t.table?.number ? `Table ${t.table.number}` : "Dining Room");
+  const taskDesc = t.task || t.description || "Clean & reset table";
+  const assigneeName = typeof t.assignee === "string" ? t.assignee : (t.assignedTo?.name || "Unassigned");
+  const dueStr = t.due || (t.dueTime ? new Date(t.dueTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Now");
+  const isTable = t.tableId || (areaName && areaName.toLowerCase().startsWith("table"));
+
+  return {
+    ...t,
+    id: t.taskNumber || t.id,
+    area: areaName,
+    task: taskDesc,
+    assignee: assigneeName,
+    due: dueStr,
+    status: t.isOverdue && t.status !== "Completed" ? "Overdue" : (t.status || "Pending"),
+    type: isTable ? "table" : "area",
+    source: t.source || (isTable ? "Table paid" : "Cleaning schedule"),
+  };
+}
+
+export function normalizeServerInventoryItem(i) {
+  if (!i) return i;
+  const currentStock = Number(i.qty ?? i.currentStock ?? 0);
+  const minStock = Number(i.min ?? i.minimumStock ?? 0);
+  const reorderStock = Number(i.reorder ?? i.reorderQuantity ?? 0);
+  const unitCost = Number(i.cost ?? i.costPerUnit ?? 0);
+  const supplierName = typeof i.supplier === "string" ? i.supplier : (i.defaultSupplier?.name || "Default Supplier");
+  const statusStr = i.status || (currentStock <= minStock ? "Low" : "OK");
+
+  return {
+    ...i,
+    id: i.id || i.code,
+    code: i.code || i.id,
+    name: i.name,
+    category: i.category || "General",
+    baseUnit: i.baseUnit || "pieces",
+    qty: currentStock,
+    min: minStock,
+    reorder: reorderStock,
+    cost: unitCost,
+    supplier: supplierName,
+    status: statusStr,
+  };
+}
+
+export function normalizeServerPurchase(p) {
+  if (!p) return p;
+  const supplierName = typeof p.supplier === "string" ? p.supplier : (p.supplier?.name || "Supplier");
+  const dateStr = p.date || (p.requestedDate ? new Date(p.requestedDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const lineCount = Array.isArray(p.lines) ? p.lines.length : (typeof p.lines === "number" ? p.lines : 0);
+
+  return {
+    ...p,
+    id: p.poNumber || p.id,
+    supplier: supplierName,
+    supplierId: p.supplierId || p.supplier?.id,
+    date: dateStr,
+    total: Number(p.totalAmount ?? p.total ?? 0),
+    status: p.status || "Requested",
+    emergency: !!p.emergency || !!p.isEmergency,
+    reviewed: p.reviewed !== undefined ? p.reviewed : !!p.reviewedById,
+    lines: lineCount,
+    lineItems: Array.isArray(p.lines) ? p.lines : [],
+  };
+}
+
+
 function seed() {
   return {
     restaurant: clone(restaurant),
@@ -157,23 +330,26 @@ export function DataProvider({ children }) {
         setDb((prev) => {
           const updated = { ...prev };
 
-          if (tablesRes.status === "fulfilled" && tablesRes.value?.tables) {
-            updated.tables = tablesRes.value.tables;
+          let nextOrders = prev.orders;
+          if (ordersRes.status === "fulfilled" && ordersRes.value?.orders && ordersRes.value.orders.length > 0) {
+            nextOrders = ordersRes.value.orders.map(normalizeServerOrder);
+            updated.orders = nextOrders;
           }
-          if (ordersRes.status === "fulfilled" && ordersRes.value?.orders) {
-            updated.orders = ordersRes.value.orders;
+          if (tablesRes.status === "fulfilled" && tablesRes.value?.tables) {
+            updated.tables = tablesRes.value.tables.map((t) => normalizeServerTable(t, nextOrders));
           }
           if (reservationsRes.status === "fulfilled" && reservationsRes.value?.reservations) {
-            updated.reservations = reservationsRes.value.reservations;
+            updated.reservations = reservationsRes.value.reservations.map(normalizeServerReservation);
           }
           if (cleaningRes.status === "fulfilled" && cleaningRes.value?.tasks) {
-            updated.cleaningTasks = cleaningRes.value.tasks;
+            updated.cleaningTasks = cleaningRes.value.tasks.map(normalizeServerCleaningTask);
           }
-          if (invRes.status === "fulfilled" && invRes.value?.items) {
-            updated.inventoryItems = invRes.value.items;
+          if (invRes.status === "fulfilled" && (invRes.value?.items || Array.isArray(invRes.value))) {
+            const rawItems = invRes.value.items || invRes.value;
+            updated.inventoryItems = rawItems.map(normalizeServerInventoryItem);
           }
           if (purchasesRes.status === "fulfilled" && purchasesRes.value?.purchases) {
-            updated.purchases = purchasesRes.value.purchases;
+            updated.purchases = purchasesRes.value.purchases.map(normalizeServerPurchase);
           }
 
           return updated;
@@ -203,24 +379,27 @@ export function DataProvider({ children }) {
     const unsubTable = subscribeToEvent("table:updated", ({ table }) => {
       if (!table) return;
       setDb((prev) => {
+        const normTable = normalizeServerTable(table, prev.orders);
         const existing = prev.tables || [];
-        const index = existing.findIndex((t) => t.id === table.id || t.number === table.number);
+        const index = existing.findIndex((t) => t.id === normTable.id || t.number === normTable.number);
         if (index !== -1) {
           const next = [...existing];
-          next[index] = { ...next[index], ...table };
+          next[index] = { ...next[index], ...normTable };
           return { ...prev, tables: next };
         }
-        return { ...prev, tables: [...existing, table] };
+        return { ...prev, tables: [...existing, normTable] };
       });
     });
 
     // 2. Table cleaning task assigned
     const unsubCleaning = subscribeToEvent("table:cleaning", ({ table, task }) => {
       setDb((prev) => {
+        const normTable = table ? normalizeServerTable({ ...table, status: "Cleaning" }, prev.orders) : null;
+        const normTask = task ? normalizeServerCleaningTask(task) : null;
         const nextTables = (prev.tables || []).map((t) =>
-          t.id === table?.id || t.number === table?.number ? { ...t, status: "Cleaning" } : t
+          t.id === normTable?.id || t.number === normTable?.number ? { ...t, ...normTable, status: "Cleaning" } : t
         );
-        const nextTasks = task ? [task, ...(prev.cleaningTasks || [])] : prev.cleaningTasks;
+        const nextTasks = normTask ? [normTask, ...(prev.cleaningTasks || [])] : prev.cleaningTasks;
         return { ...prev, tables: nextTables, cleaningTasks: nextTasks };
       });
     });
@@ -229,14 +408,15 @@ export function DataProvider({ children }) {
     const unsubOrder = subscribeToEvent("order:updated", ({ order }) => {
       if (!order) return;
       setDb((prev) => {
+        const normOrder = normalizeServerOrder(order);
         const existing = prev.orders || [];
-        const index = existing.findIndex((o) => o.id === order.id || o.orderNumber === order.orderNumber);
+        const index = existing.findIndex((o) => o.id === normOrder.id || o.orderNumber === normOrder.orderNumber);
         if (index !== -1) {
           const next = [...existing];
-          next[index] = { ...next[index], ...order };
+          next[index] = { ...next[index], ...normOrder };
           return { ...prev, orders: next };
         }
-        return { ...prev, orders: [order, ...existing] };
+        return { ...prev, orders: [normOrder, ...existing] };
       });
     });
 

@@ -32,11 +32,39 @@ export default function Tables() {
   const { tables, managedLists } = db;
   const manager = isPrivileged(role);
   const [section, setSection] = useState("All");
-  const sections = ["All", ...managedLists.tableSections];
+  const tableSections = managedLists?.tableSections || ["Window", "Main Hall", "Patio", "Private"];
+  const sections = ["All", ...tableSections];
+
+  const getTableOrder = (t) => {
+    if (!t) return null;
+    if (t.order) return t.order;
+    if (t.activeOrder) return t.activeOrder.orderNumber || t.activeOrder.id;
+    if (t.status === "Occupied") {
+      const match = (db.orders || []).find(
+        (o) => String(o.table) === String(t.number) && o.status !== "Completed" && o.status !== "Cancelled"
+      );
+      return match ? (match.id || match.orderNumber) : null;
+    }
+    return null;
+  };
+
+  const getTableWaiter = (t) => {
+    if (!t) return null;
+    if (t.waiter) return t.waiter;
+    if (t.activeOrder) return t.activeOrder.waiter?.name || (typeof t.activeOrder.waiter === "string" ? t.activeOrder.waiter : null);
+    if (t.status === "Occupied") {
+      const match = (db.orders || []).find(
+        (o) => String(o.table) === String(t.number) && o.status !== "Completed" && o.status !== "Cancelled"
+      );
+      return match ? (typeof match.waiter === "string" ? match.waiter : (match.waiter?.name || null)) : null;
+    }
+    return null;
+  };
+
   const { filtered, counts } = useMemo(
     () => ({
-      filtered: section === "All" ? tables : tables.filter((t) => t.section === section),
-      counts: tables.reduce((acc, t) => {
+      filtered: section === "All" ? (tables || []) : (tables || []).filter((t) => t.section === section),
+      counts: (tables || []).reduce((acc, t) => {
         acc[t.status] = (acc[t.status] || 0) + 1;
         return acc;
       }, {}),
@@ -45,8 +73,9 @@ export default function Tables() {
   );
 
   const open = (t) => {
+    const ordId = getTableOrder(t);
     if (t.status === "Available") navigate(`/orders/new?table=${encodeURIComponent(t.number)}`);
-    else if (t.order) navigate(`/orders/${t.order}`);
+    else if (ordId) navigate(`/orders/${ordId}`);
     else if (t.status === "Cleaning") navigate("/my-tasks");
   };
 
@@ -66,8 +95,9 @@ export default function Tables() {
   };
 
   const getTableReadyTickets = (table) => {
-    if (!table.order) return [];
-    const ord = db.orders.find((o) => o.id === table.order);
+    const ordId = getTableOrder(table);
+    if (!ordId) return [];
+    const ord = (db.orders || []).find((o) => o.id === ordId || o.orderNumber === ordId || o.orderId === ordId);
     if (!ord) return [];
     return (ord.tickets || []).filter((tk) => tk.status === "Ready");
   };
@@ -104,6 +134,8 @@ export default function Tables() {
           {filtered.map((t) => {
             const readyTickets = getTableReadyTickets(t);
             const isFoodReady = readyTickets.length > 0;
+            const orderId = getTableOrder(t);
+            const waiterName = getTableWaiter(t);
             return (
               <div
                 key={t.id}
@@ -129,22 +161,22 @@ export default function Tables() {
                   <span className="text-border">·</span>
                   <MapPin className="h-3.5 w-3.5" /> {t.section}
                 </div>
-                {t.order && (
+                {orderId && (
                   <div className="mt-1 rounded-lg bg-card/80 px-2 py-1.5 text-xs">
-                    <p className="font-medium">{t.order}</p>
-                    <p className="text-muted-foreground">Waiter: {t.waiter}</p>
+                    <p className="font-medium">{orderId}</p>
+                    <p className="text-muted-foreground">Waiter: {waiterName || "—"}</p>
                   </div>
                 )}
                 {t.reservation && (
                   <div className="mt-1 rounded-lg bg-card/80 px-2 py-1.5 text-xs">
-                    <p className="font-medium">{t.reservation}</p>
+                    <p className="font-medium">{typeof t.reservation === "string" ? t.reservation : (t.reservation?.customer || "Reserved")}</p>
                     <p className="text-muted-foreground">Reserved today</p>
                   </div>
                 )}
                 <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
                   {isFoodReady && (
                     <button
-                      onClick={() => navigate(`/orders/${t.order}`)}
+                      onClick={() => navigate(`/orders/${orderId}`)}
                       className="btn-primary w-full text-xs bg-sage-600 hover:brightness-105"
                     >
                       Serve Food →
@@ -153,8 +185,8 @@ export default function Tables() {
                   {t.status === "Available" && (
                     <button onClick={() => open(t)} className="text-xs font-medium text-primary">Open order →</button>
                   )}
-                  {t.order && !isFoodReady && (
-                    <button onClick={() => open(t)} className="text-xs font-medium text-primary">View {t.order} →</button>
+                  {orderId && !isFoodReady && (
+                    <button onClick={() => open(t)} className="text-xs font-medium text-primary">View {orderId} →</button>
                   )}
                   {t.status === "Cleaning" && (
                     <button onClick={() => navigate("/my-tasks")} className="text-xs font-medium text-primary">Cleaning queue →</button>

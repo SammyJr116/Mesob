@@ -26,7 +26,7 @@ export default function Expenses() {
     const visible = isManager ? expenses : expenses.filter((e) => e.by === "Inventory");
     const needle = q.toLowerCase();
     const filtered = visible.filter((e) => {
-      const okQ = !needle || e.description.toLowerCase().includes(needle) || e.category.toLowerCase().includes(needle);
+      const okQ = !needle || (e.description || "").toLowerCase().includes(needle) || (e.category || "").toLowerCase().includes(needle);
       const okCat = cat === "All" || e.category === cat;
       const okStatus = status === "All" || e.status === status;
       return okQ && okCat && okStatus;
@@ -35,7 +35,7 @@ export default function Expenses() {
     return {
       visibleCount: visible.length,
       filtered,
-      totalConfirmed: confirmed.reduce((s, e) => s + e.amount, 0),
+      totalConfirmed: confirmed.reduce((s, e) => s + (Number(e.amount) || 0), 0),
       pending: visible.filter((e) => e.status === "Pending confirmation"),
     };
   }, [expenses, isManager, q, cat, status]);

@@ -8,20 +8,20 @@ export async function inventoryRoutes(app: FastifyInstance) {
   app.addHook("preHandler", authenticate);
 
   /**
-   * GET /api/v1/inventory/items - List inventory items
+   * GET /api/v1/inventory or /api/v1/inventory/items - List inventory items
    */
-  app.get(
-    "/items",
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const query = request.query as { category?: string; lowStock?: string; search?: string };
-      const items = await inventoryService.getInventoryItems({
-        category: query.category,
-        lowStock: query.lowStock === "true",
-        search: query.search,
-      });
-      return reply.send({ items });
-    }
-  );
+  const listItemsHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+    const query = request.query as { category?: string; lowStock?: string; search?: string };
+    const items = await inventoryService.getInventoryItems({
+      category: query.category,
+      lowStock: query.lowStock === "true",
+      search: query.search,
+    });
+    return reply.send({ items });
+  };
+
+  app.get("/", listItemsHandler);
+  app.get("/items", listItemsHandler);
 
   /**
    * GET /api/v1/inventory/items/:id - Retrieve item by ID

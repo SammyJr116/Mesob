@@ -7,18 +7,18 @@ import { calcBill, calcCreditNote, etb } from "@/lib/format";
 import { useData } from "@/lib/DataContext";
 import { useRole } from "@/lib/RoleContext";
 import { isPrivileged } from "@/lib/roles";
-import { visibleOrders } from "@/lib/scope";
+import { visibleOrders, canEditOrder } from "@/lib/scope";
 import { nextId, stamp } from "@/lib/datetime";
 import { notifySuccess } from "@/lib/notify";
 
 export default function OrderDetail() {
   const { id } = useParams();
   const { db, updateItem, insertItem } = useData();
-  const { role } = useRole();
+  const { role, user } = useRole();
   const { restaurant } = db;
   /* Same scoping as the orders list, so a hand-typed URL cannot leak another
      waiter's order. */
-  const found = visibleOrders(db.orders, role).find((o) => o.id === id);
+  const found = visibleOrders(db.orders, role).find((o) => o.id === id || o.orderId === id || o.orderNumber === id);
   const [showBill, setShowBill] = useState(false);
   const [showDiscount, setShowDiscount] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
@@ -28,6 +28,7 @@ export default function OrderDetail() {
   const [showReassignWaiter, setShowReassignWaiter] = useState(false);
   const [itemToCancel, setItemToCancel] = useState(null);
   const isManager = isPrivileged(role);
+  const canEdit = isManager || canEditOrder(found, role, user?.employee?.name || user?.username);
 
   if (!found) {
     return (
@@ -91,7 +92,7 @@ export default function OrderDetail() {
 
     insertItem("cleaningTasks", {
       id: nextId(db.cleaningTasks, "CL", 2),
-      area: `Table ${oldTableNum} (Moved)`,
+      area: `Table ${oldTableNum}`,
       task: `Sanitize & reset Table ${oldTableNum}`,
       assignee: "Unassigned",
       due: "Now",
@@ -295,7 +296,7 @@ export default function OrderDetail() {
               <button onClick={() => setShowBill(true)} className="btn-outline w-full">
                 <FileText className="h-4 w-4" /> {order.invoice ? "View tax invoice" : "Bill preview"}
               </button>
-              {order.table && order.status !== "Completed" && order.status !== "Cancelled" && (
+              {(isManager || canEdit) && order.table && order.status !== "Completed" && order.status !== "Cancelled" && (
                 <button onClick={() => setShowMoveTable(true)} className="btn-outline w-full text-xs">
                   <MapPin className="h-4 w-4" /> Move table
                 </button>
@@ -305,7 +306,7 @@ export default function OrderDetail() {
                   <Tag className="h-4 w-4" /> Apply discount (Manager)
                 </button>
               )}
-              {order.status !== "Completed" && order.status !== "Cancelled" && (
+              {canEdit && order.status !== "Completed" && order.status !== "Cancelled" && (
                 <button onClick={() => setShowPayment(true)} className="btn-primary w-full">
                   <CreditCard className="h-4 w-4" /> Record payment & invoice
                 </button>
@@ -315,7 +316,7 @@ export default function OrderDetail() {
                   <RotateCcw className="h-4 w-4" /> Issue credit note (Manager)
                 </button>
               )}
-              {order.status !== "Cancelled" && order.status !== "Completed" && (
+              {canEdit && order.status !== "Cancelled" && order.status !== "Completed" && (
                 <button onClick={() => setShowCancel(true)} className="btn-destructive w-full">
                   <Ban className="h-4 w-4" /> Cancel order (reason required)
                 </button>

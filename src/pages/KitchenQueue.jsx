@@ -29,9 +29,9 @@ export default function KitchenQueue() {
 
   const groups = useMemo(() => {
     const tickets = [];
-    db.orders.forEach((o) => {
+    (db.orders || []).forEach((o) => {
       if (o.status === "Cancelled") return;
-      o.tickets.forEach((t) => {
+      (o.tickets || []).forEach((t) => {
         if (OPEN.includes(t.status)) {
           tickets.push({ ...t, order: o.id, number: o.number, table: o.table, waiter: o.waiter, type: o.type });
         }

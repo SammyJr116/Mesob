@@ -133,14 +133,19 @@ const Shell = () => {
         <Route path="/profile" element={<Profile />} />
 
         {/* Operations */}
+        {/* Operations */}
         <Route element={<Guarded roles={["manager", "admin", "waiter"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tables" element={<Tables />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/orders/:id" element={<OrderDetail />} />
           <Route path="/orders/new" element={<NewOrder />} />
           <Route path="/reservations" element={<Reservations />} />
           <Route path="/customers" element={<Customers />} />
+        </Route>
+
+        {/* Orders List & Detail: visible to operational staff (scoped by visibleOrders) */}
+        <Route element={<Guarded roles={["manager", "admin", "waiter", "kitchen", "inventory", "cleaner", "security"]} />}>
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/:id" element={<OrderDetail />} />
         </Route>
 
         {/* Kitchen */}
