@@ -21,6 +21,7 @@ export default function Inventory() {
   const [tab, setTab] = useState("items");
   const [showOp, setShowOp] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [restocking, setRestocking] = useState(null);
   const [showCsvImport, setShowCsvImport] = useState(false);
 
   const filtered = useMemo(() => {
@@ -87,6 +88,24 @@ export default function Inventory() {
     { key: "status", header: "Status", sortable: true, render: (i) => (
       <span className={i.status === "Low" ? "font-medium text-berbere-600" : "text-sage-600"}>{i.status}</span>
     ) },
+    ...(canEdit ? [{
+      key: "actions",
+      header: "Action",
+      align: /** @type {"right"} */ ("right"),
+      render: (i) => (
+        <button
+          onClick={() => setRestocking(i)}
+          className={cn(
+            "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+            i.status === "Low"
+              ? "bg-berbere-100 text-berbere-700 hover:bg-berbere-200 border border-berbere-300 font-semibold"
+              : "btn-outline text-2xs"
+          )}
+        >
+          {i.status === "Low" ? "Restock now" : "Restock"}
+        </button>
+      ),
+    }] : []),
   ];
 
   const movementColumns = [
@@ -224,6 +243,31 @@ export default function Inventory() {
             });
             notifySuccess(`Imported ${itemsToImport.length} inventory items`);
             setShowCsvImport(false);
+          }}
+        />
+      )}
+      {restocking && (
+        <RestockModal
+          item={restocking}
+          onClose={() => setRestocking(null)}
+          onConfirm={(it, restockQty) => {
+            recordMovement(it, restockQty, "Purchase receipt", "Restock " + it.name);
+            const poId = nextId(db.purchases || [], "PO-", 4);
+            insertItem("purchases", {
+              id: poId,
+              supplier: it.supplier || "Supplier",
+              date: businessDate(),
+              status: "Received",
+              total: Math.round(restockQty * (it.cost || 50)),
+              lines: 1,
+              item: it.name,
+              qty: restockQty,
+              emergency: false,
+            });
+            const nextQty = (it.qty || 0) + restockQty;
+            const nextStatus = nextQty <= it.min ? "Low" : "OK";
+            notifySuccess(`${it.name} restocked (+${restockQty.toLocaleString()} ${it.baseUnit}) — status is now ${nextStatus}!`);
+            setRestocking(null);
           }}
         />
       )}
@@ -566,6 +610,77 @@ function InventoryCsvImportModal({ inventoryItems, categories, suppliers, onClos
             </div>
           </div>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+
+function RestockModal({ item, onClose, onConfirm }) {
+  const [qty, setQty] = useState(item.reorder || item.min || 100);
+  const qtyN = Number(qty) || 0;
+  const current = Number(item.qty || 0);
+  const min = Number(item.min || 0);
+  const nextStock = current + qtyN;
+  const willBeOk = nextStock > min;
+  const neededToClear = Math.max(0, min - current + 1);
+
+  return (
+    <Modal
+      title={`Restock ${item.name}`}
+      description="Immediately adds delivered stock, logs a purchase receipt, and updates inventory status."
+      onClose={onClose}
+      size="sm"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (qtyN <= 0) return;
+        onConfirm(item, qtyN);
+      }}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-outline flex-1">Cancel</button>
+          <button type="submit" disabled={qtyN <= 0} className="btn-primary flex-1">Confirm restock</button>
+        </>
+      }
+    >
+      <div className="space-y-3 text-sm">
+        <div className="rounded-lg bg-secondary/60 p-3 space-y-1.5 text-xs">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Current in stock:</span>
+            <span className="font-semibold">{current.toLocaleString()} {item.baseUnit}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Minimum safety level:</span>
+            <span className="font-semibold">{min.toLocaleString()} {item.baseUnit}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Supplier:</span>
+            <span className="font-semibold">{item.supplier || "Supplier"}</span>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="restock-qty" className="mb-1 block text-sm font-medium">Quantity to add ({item.baseUnit})</label>
+          <input
+            id="restock-qty"
+            type="number"
+            min="1"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            className="input-soft"
+          />
+        </div>
+
+        <div className={cn("rounded-lg p-2.5 text-xs border", willBeOk ? "bg-sage-50 border-sage-200 text-sage-800" : "bg-berbere-50 border-berbere-200 text-berbere-800")}>
+          <p className="font-semibold">
+            New Stock: {nextStock.toLocaleString()} {item.baseUnit} &rarr; Status: {willBeOk ? "OK (Healthy)" : "Still Low"}
+          </p>
+          {!willBeOk && (
+            <p className="mt-1 text-2xs text-berbere-700">
+              Note: Current stock is {current.toLocaleString()}. Add at least {neededToClear.toLocaleString()} {item.baseUnit} to clear the Low status.
+            </p>
+          )}
+        </div>
       </div>
     </Modal>
   );
